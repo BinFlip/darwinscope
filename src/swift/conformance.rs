@@ -29,8 +29,8 @@
 
 use crate::{
     swift::{
-        context::{ConformanceFlags, TypeReferenceKind},
         SwiftRuntime,
+        context::{ConformanceFlags, TypeReferenceKind},
     },
     util::{read_i32_le_at, read_u32_le_at, relative_pointer},
 };
@@ -212,7 +212,8 @@ fn decode_conformance<'a, 'p>(
     };
 
     let type_ref_slot = descriptor_va.checked_add(4)?;
-    let type_ref = decode_type_reference(rt, type_ref_slot, type_ref_rel, flags.type_reference_kind());
+    let type_ref =
+        decode_type_reference(rt, type_ref_slot, type_ref_rel, flags.type_reference_kind());
 
     let witness_slot = descriptor_va.checked_add(8)?;
     let witness_table_va = if witness_rel == 0 {

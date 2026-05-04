@@ -477,8 +477,14 @@ mod tests {
         // S_TYPE mask is the low 8 bits of section flags.
         // S_REGULAR = 0, S_CSTRING_LITERALS = 2, S_SYMBOL_STUBS = 8.
         assert!(matches!(SectionType::from_raw(0x00), SectionType::Regular));
-        assert!(matches!(SectionType::from_raw(0x02), SectionType::CStringLiterals));
-        assert!(matches!(SectionType::from_raw(0x08), SectionType::SymbolStubs));
+        assert!(matches!(
+            SectionType::from_raw(0x02),
+            SectionType::CStringLiterals
+        ));
+        assert!(matches!(
+            SectionType::from_raw(0x08),
+            SectionType::SymbolStubs
+        ));
     }
 
     #[test]

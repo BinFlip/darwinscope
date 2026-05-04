@@ -59,7 +59,10 @@ fn parse_fat_data_view_is_slice_not_full_archive() {
     let bin = MachoBinary::parse_with_arch(&bytes, CPU_TYPE_ARM64, CPU_SUBTYPE_ANY).unwrap();
     // The slice's `raw()` must equal a contiguous sub-range of the
     // fat archive — never the full archive.
-    assert!(bin.raw().len() < bytes.len(), "fat slice shouldn't equal full archive");
+    assert!(
+        bin.raw().len() < bytes.len(),
+        "fat slice shouldn't equal full archive"
+    );
     assert!(!bin.raw().is_empty());
     // Any function-start address must translate to a file offset
     // that lies inside `raw()` (not past it).
@@ -202,7 +205,10 @@ fn header_min_os_macos() {
 fn header_sdk_version_present() {
     let bytes = read_fixture(ARM64_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let sdk = bin.header().sdk_version().expect("LC_BUILD_VERSION sdk present");
+    let sdk = bin
+        .header()
+        .sdk_version()
+        .expect("LC_BUILD_VERSION sdk present");
     assert!(sdk.major >= 11);
 }
 
@@ -213,7 +219,10 @@ fn header_source_version_present() {
     // clang emits LC_SOURCE_VERSION with version 0.0 by default;
     // presence is what we assert. The packed-u64 decode returns the
     // all-zero variant for that case.
-    let src = bin.header().source_version().expect("LC_SOURCE_VERSION present");
+    let src = bin
+        .header()
+        .source_version()
+        .expect("LC_SOURCE_VERSION present");
     assert_eq!(src.a, 0);
 }
 

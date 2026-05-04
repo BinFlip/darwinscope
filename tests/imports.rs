@@ -48,7 +48,11 @@ fn legacy_bind_addresses_translate_to_file_offsets() {
         let off = bin
             .vm_to_file_offset(imp.address)
             .expect("import address must be mappable");
-        assert_eq!(off, imp.offset, "import {} offset/address disagree", imp.name);
+        assert_eq!(
+            off, imp.offset,
+            "import {} offset/address disagree",
+            imp.name
+        );
     }
 }
 
@@ -97,11 +101,7 @@ fn chained_imports_carry_dylib_path() {
     let bin = MachoBinary::parse(&bytes).unwrap();
     let mut count = 0;
     for imp in bin.imports() {
-        assert!(
-            !imp.dylib.is_empty(),
-            "import {} has empty dylib",
-            imp.name
-        );
+        assert!(!imp.dylib.is_empty(), "import {} has empty dylib", imp.name);
         count += 1;
     }
     assert!(count >= 1);

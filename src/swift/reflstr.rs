@@ -20,10 +20,7 @@
 use crate::{swift::SwiftRuntime, util::read_cstr_at};
 
 /// Resolve a field-name relative-pointer target VA to its string.
-pub(crate) fn lookup_field_name<'a>(
-    rt: &SwiftRuntime<'a>,
-    target_va: u64,
-) -> Option<&'a str> {
+pub(crate) fn lookup_field_name<'a>(rt: &SwiftRuntime<'a>, target_va: u64) -> Option<&'a str> {
     if target_va == 0 {
         return None;
     }

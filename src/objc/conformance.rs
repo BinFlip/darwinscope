@@ -6,7 +6,7 @@
 
 use std::marker::PhantomData;
 
-use crate::objc::{class::ClassIter, protocol::ProtocolNameIter, ObjcRuntime};
+use crate::objc::{ObjcRuntime, class::ClassIter, protocol::ProtocolNameIter};
 
 /// One conformance edge.
 #[derive(Debug, Clone, Copy)]

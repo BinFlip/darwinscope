@@ -19,7 +19,7 @@
 use std::marker::PhantomData;
 
 use crate::objc::{
-    class::decode_class_name, protocol::decode_protocol, strip_objc_symbol_prefix, ObjcRuntime,
+    ObjcRuntime, class::decode_class_name, protocol::decode_protocol, strip_objc_symbol_prefix,
 };
 
 /// Resolution of a single reference-section slot.
@@ -167,13 +167,9 @@ impl<'a, 'p> Iterator for ClassRefIter<'a, 'p> {
     type Item = RefTarget<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         let sec = self.rt.class_refs?;
-        next_ref_target(
-            self.rt,
-            sec.body,
-            sec.vmaddr,
-            &mut self.cursor,
-            |rt, va| decode_class_name(rt, va),
-        )
+        next_ref_target(self.rt, sec.body, sec.vmaddr, &mut self.cursor, |rt, va| {
+            decode_class_name(rt, va)
+        })
     }
 }
 
@@ -198,13 +194,9 @@ impl<'a, 'p> Iterator for SuperRefIter<'a, 'p> {
     type Item = RefTarget<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         let sec = self.rt.super_refs?;
-        next_ref_target(
-            self.rt,
-            sec.body,
-            sec.vmaddr,
-            &mut self.cursor,
-            |rt, va| decode_class_name(rt, va),
-        )
+        next_ref_target(self.rt, sec.body, sec.vmaddr, &mut self.cursor, |rt, va| {
+            decode_class_name(rt, va)
+        })
     }
 }
 
@@ -229,12 +221,8 @@ impl<'a, 'p> Iterator for ProtoRefIter<'a, 'p> {
     type Item = RefTarget<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         let sec = self.rt.proto_refs?;
-        next_ref_target(
-            self.rt,
-            sec.body,
-            sec.vmaddr,
-            &mut self.cursor,
-            |rt, va| decode_protocol(rt, va).map(|p| p.name()),
-        )
+        next_ref_target(self.rt, sec.body, sec.vmaddr, &mut self.cursor, |rt, va| {
+            decode_protocol(rt, va).map(|p| p.name())
+        })
     }
 }

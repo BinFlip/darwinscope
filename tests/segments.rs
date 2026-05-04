@@ -47,10 +47,7 @@ fn text_segment_has_expected_sections() {
     assert_eq!(text.nsects(), 4);
     assert_eq!(text.fileoff(), 0);
     assert!(text.filesize() > 0);
-    let sect_names: Vec<String> = text
-        .sections()
-        .map(|s| s.sectname().to_string())
-        .collect();
+    let sect_names: Vec<String> = text.sections().map(|s| s.sectname().to_string()).collect();
     assert_eq!(
         sect_names,
         vec!["__text", "__stubs", "__cstring", "__unwind_info"]

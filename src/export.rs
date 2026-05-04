@@ -18,8 +18,9 @@
 //! to the `&self` borrow rather than to the data lifetime).
 
 use goblin::mach::exports::{
-    EXPORT_SYMBOL_FLAGS_KIND_MASK, EXPORT_SYMBOL_FLAGS_REEXPORT, EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER,
-    EXPORT_SYMBOL_FLAGS_WEAK_DEFINITION, Export as GoblinExport, ExportInfo as GoblinExportInfo,
+    EXPORT_SYMBOL_FLAGS_KIND_MASK, EXPORT_SYMBOL_FLAGS_REEXPORT,
+    EXPORT_SYMBOL_FLAGS_STUB_AND_RESOLVER, EXPORT_SYMBOL_FLAGS_WEAK_DEFINITION,
+    Export as GoblinExport, ExportInfo as GoblinExportInfo,
 };
 
 /// View over a single exported symbol resolved from the export trie.

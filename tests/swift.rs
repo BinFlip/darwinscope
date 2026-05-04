@@ -74,7 +74,10 @@ fn swift_runtime_records_optional_section_presence() {
     let rt = bin.swift().unwrap();
 
     // swift-tiny ships __swift5_entry (Swift @main) and __swift5_typeref.
-    assert!(rt.has_entry_point(), "swift-tiny should carry __swift5_entry");
+    assert!(
+        rt.has_entry_point(),
+        "swift-tiny should carry __swift5_entry"
+    );
 
     // It does NOT ship __swift5_capture / __swift5_replac /
     // __swift5_builtin under Swift 6.x. The accessors should
@@ -111,7 +114,10 @@ fn conformance_flags_decode_bit_layout() {
     // has_global_actor_isolation set.
     let raw = (2u32 << 3) | (3u32 << 8) | (1u32 << 16) | (1u32 << 19);
     let cf = ConformanceFlags(raw);
-    assert_eq!(cf.type_reference_kind(), TypeReferenceKind::DirectObjCClassName);
+    assert_eq!(
+        cf.type_reference_kind(),
+        TypeReferenceKind::DirectObjCClassName
+    );
     assert_eq!(cf.num_conditional_requirements(), 3);
     assert!(cf.has_resilient_witnesses());
     assert!(cf.has_global_actor_isolation());
@@ -186,7 +192,9 @@ fn _smoke_helper_lifetime_anchor() {
 fn swift_runtime_works_on_x86_64_slice() {
     let bytes = read(SWIFT_TINY_X86_64);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let rt = bin.swift().expect("swift-tiny-x86_64 carries Swift content");
+    let rt = bin
+        .swift()
+        .expect("swift-tiny-x86_64 carries Swift content");
 
     let names: Vec<_> = rt.types().map(|d| d.name().to_owned()).collect();
     assert!(names.contains(&"Hello".to_owned()), "names: {:?}", names);
@@ -364,10 +372,7 @@ fn class_has_vtable_for_counter() {
         .expect("Counter must be present");
 
     assert!(counter.type_flags().class_has_vtable());
-    let entries: Vec<_> = counter
-        .vtable()
-        .expect("Counter has a vtable")
-        .collect();
+    let entries: Vec<_> = counter.vtable().expect("Counter has a vtable").collect();
     assert!(
         !entries.is_empty(),
         "Counter has at least one vtable entry (init/deinit + bump())"
@@ -450,10 +455,7 @@ fn vtable_returns_none_for_non_classes() {
     let bin = MachoBinary::parse(&bytes).unwrap();
     let rt = bin.swift().unwrap();
     let hello = rt.types().find(|d| d.name() == "Hello").unwrap();
-    assert!(
-        hello.vtable().is_none(),
-        "structs do not have vtables"
-    );
+    assert!(hello.vtable().is_none(), "structs do not have vtables");
     let mood = rt.types().find(|d| d.name() == "Mood").unwrap();
     assert!(mood.vtable().is_none(), "enums do not have vtables");
 }
@@ -502,9 +504,21 @@ fn field_descriptors_emit_kinds_for_swift_tiny() {
         "swift-tiny populates __swift5_fieldmd — expected ≥1 descriptor"
     );
     let kinds: Vec<_> = descs.iter().map(|d| d.kind()).collect();
-    assert!(kinds.contains(&FieldDescriptorKind::Struct), "kinds: {:?}", kinds);
-    assert!(kinds.contains(&FieldDescriptorKind::Class), "kinds: {:?}", kinds);
-    assert!(kinds.contains(&FieldDescriptorKind::Enum), "kinds: {:?}", kinds);
+    assert!(
+        kinds.contains(&FieldDescriptorKind::Struct),
+        "kinds: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&FieldDescriptorKind::Class),
+        "kinds: {:?}",
+        kinds
+    );
+    assert!(
+        kinds.contains(&FieldDescriptorKind::Enum),
+        "kinds: {:?}",
+        kinds
+    );
 }
 
 #[test]
@@ -683,7 +697,10 @@ fn conformances_links_hello_to_greeter() {
             TypeReferenceKind::DirectTypeDescriptor
         );
     }
-    assert!(found, "Hello: Greeter conformance with matching TypeRef must exist");
+    assert!(
+        found,
+        "Hello: Greeter conformance with matching TypeRef must exist"
+    );
 }
 
 #[test]
@@ -724,8 +741,16 @@ fn qualified_name_prefixes_with_module() {
     let bin = MachoBinary::parse(&bytes).unwrap();
     let rt = bin.swift().unwrap();
     let names: Vec<_> = rt.types().map(|d| d.qualified_name()).collect();
-    assert!(names.iter().any(|n| n == "main.Hello"), "names: {:?}", names);
-    assert!(names.iter().any(|n| n == "main.Counter"), "names: {:?}", names);
+    assert!(
+        names.iter().any(|n| n == "main.Hello"),
+        "names: {:?}",
+        names
+    );
+    assert!(
+        names.iter().any(|n| n == "main.Counter"),
+        "names: {:?}",
+        names
+    );
     assert!(names.iter().any(|n| n == "main.Mood"), "names: {:?}", names);
 }
 

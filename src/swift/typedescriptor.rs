@@ -47,9 +47,8 @@
 
 use crate::{
     swift::{
-        classtrailers,
+        SwiftRuntime, classtrailers,
         context::{ContextDescriptorFlags, ContextDescriptorKind, MetadataInitializationKind},
-        SwiftRuntime,
     },
     util::{read_i32_le_at, read_u32_le_at, relative_pointer},
 };
@@ -351,9 +350,7 @@ impl<'a, 'p> TypeDescriptor<'a, 'p> {
     }
 
     /// Iterator over the class default-override table, if present.
-    pub fn default_override_table(
-        &self,
-    ) -> Option<crate::swift::DefaultOverrideEntryIter<'a, 'p>> {
+    pub fn default_override_table(&self) -> Option<crate::swift::DefaultOverrideEntryIter<'a, 'p>> {
         let class = match &self.body {
             TypeKindBody::Class(c) => c,
             _ => return None,
@@ -473,9 +470,7 @@ impl<'a, 'p> TypeDescriptor<'a, 'p> {
     }
 
     /// Decoded `TargetSingletonMetadataPointer` block when present.
-    pub fn singleton_metadata_pointer(
-        &self,
-    ) -> Option<crate::swift::SingletonMetadataPointer> {
+    pub fn singleton_metadata_pointer(&self) -> Option<crate::swift::SingletonMetadataPointer> {
         let address = match &self.body {
             TypeKindBody::Class(c) => c.singleton_metadata_pointer_va?,
             TypeKindBody::Struct(s) => s.singleton_metadata_pointer_va?,
@@ -808,8 +803,6 @@ fn decode_enum_body(
 /// Decoded `MetadataInitializationKind` for the trailing-objects
 /// walker.
 #[allow(dead_code)]
-pub(crate) fn metadata_init_kind(
-    flags: ContextDescriptorFlags,
-) -> MetadataInitializationKind {
+pub(crate) fn metadata_init_kind(flags: ContextDescriptorFlags) -> MetadataInitializationKind {
     flags.type_flags().metadata_initialization()
 }

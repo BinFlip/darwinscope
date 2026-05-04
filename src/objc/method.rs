@@ -127,7 +127,10 @@ impl<'a> Method<'a> {
     /// `true` when the row was decoded from the 12-byte
     /// relative-offset layout.
     pub fn is_small(&self) -> bool {
-        matches!(self.kind, MethodKind::SmallIndirect | MethodKind::SmallDirect)
+        matches!(
+            self.kind,
+            MethodKind::SmallIndirect | MethodKind::SmallDirect
+        )
     }
 }
 
@@ -277,11 +280,7 @@ pub(crate) fn method_list_iter<'a, 'p>(
     }
 }
 
-fn decode_method<'a>(
-    rt: &ObjcRuntime<'a>,
-    entry_va: u64,
-    kind: MethodKind,
-) -> Option<Method<'a>> {
+fn decode_method<'a>(rt: &ObjcRuntime<'a>, entry_va: u64, kind: MethodKind) -> Option<Method<'a>> {
     match kind {
         MethodKind::Legacy => decode_legacy_method(rt, entry_va),
         MethodKind::SmallIndirect => decode_small_method(rt, entry_va, false),
@@ -289,10 +288,7 @@ fn decode_method<'a>(
     }
 }
 
-fn decode_legacy_method<'a>(
-    rt: &ObjcRuntime<'a>,
-    entry_va: u64,
-) -> Option<Method<'a>> {
+fn decode_legacy_method<'a>(rt: &ObjcRuntime<'a>, entry_va: u64) -> Option<Method<'a>> {
     rt.read_bytes(entry_va, 24)?;
     let sel_va = rt.resolve_pointer(entry_va)?;
     let types_va = rt.resolve_pointer(entry_va.checked_add(8)?)?;

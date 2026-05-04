@@ -655,10 +655,7 @@ mod tests {
         ] {
             assert_eq!(TypeReferenceKind::from_bits(raw), expected);
         }
-        assert_eq!(
-            TypeReferenceKind::from_bits(7),
-            TypeReferenceKind::Other(7)
-        );
+        assert_eq!(TypeReferenceKind::from_bits(7), TypeReferenceKind::Other(7));
     }
 
     #[test]
@@ -667,8 +664,14 @@ mod tests {
             FieldDescriptorKind::from_bits(0),
             FieldDescriptorKind::Struct
         );
-        assert_eq!(FieldDescriptorKind::from_bits(7), FieldDescriptorKind::ObjCClass);
-        assert_eq!(FieldDescriptorKind::from_bits(99), FieldDescriptorKind::Other(99));
+        assert_eq!(
+            FieldDescriptorKind::from_bits(7),
+            FieldDescriptorKind::ObjCClass
+        );
+        assert_eq!(
+            FieldDescriptorKind::from_bits(99),
+            FieldDescriptorKind::Other(99)
+        );
     }
 
     #[test]

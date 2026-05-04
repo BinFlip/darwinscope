@@ -97,7 +97,9 @@ fn objc_tiny_x86_64_decodes_ascii_literals() {
     // PAC-strip fallback path rather than the rebase index.
     let bytes = read(OBJC_TINY_X86_64);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let rt = bin.cfstrings().expect("objc-tiny x86_64 carries __cfstring");
+    let rt = bin
+        .cfstrings()
+        .expect("objc-tiny x86_64 carries __cfstring");
     let entries: Vec<_> = rt.iter().collect();
     assert!(!entries.is_empty());
     for e in &entries {

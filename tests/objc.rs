@@ -16,8 +16,7 @@
 use std::path::Path;
 
 use darwinscope::{
-    MachoBinary, ObjcRuntime, RefTarget,
-    objc::OBJC_IMAGE_HAS_CATEGORY_CLASS_PROPERTIES,
+    MachoBinary, ObjcRuntime, RefTarget, objc::OBJC_IMAGE_HAS_CATEGORY_CLASS_PROPERTIES,
 };
 
 const OBJC_TINY_ARM64: &str = "tests/samples/synthesized/objc-tiny/objc-tiny-arm64";
@@ -78,7 +77,10 @@ fn classlist_emits_greeter_with_metaclass_pair() {
     assert!(!classes[0].is_meta(), "first row should be instance class");
     assert!(classes[1].is_meta(), "second row should be the metaclass");
 
-    let names: Vec<_> = classes.iter().filter_map(|c| c.ro().map(|r| r.name())).collect();
+    let names: Vec<_> = classes
+        .iter()
+        .filter_map(|c| c.ro().map(|r| r.name()))
+        .collect();
     assert!(
         names.contains(&"Greeter"),
         "expected to find class named 'Greeter'; got {names:?}",
@@ -131,10 +133,7 @@ fn methods_resolve_selectors_through_small_selref_indirection() {
         .unwrap();
     let ro = greeter.ro().unwrap();
     let methods: Vec<_> = ro.methods().collect();
-    assert!(
-        !methods.is_empty(),
-        "Greeter must have at least 1 method"
-    );
+    assert!(!methods.is_empty(), "Greeter must have at least 1 method");
     // Modern toolchain emits the small format.
     for m in &methods {
         assert!(
@@ -308,16 +307,16 @@ fn class_refs_resolve_local_and_external() {
     let rt = bin.objc().unwrap();
 
     let refs: Vec<RefTarget<'_>> = rt.class_refs().collect();
-    assert!(
-        !refs.is_empty(),
-        "expected class refs in objc-tiny"
-    );
+    assert!(!refs.is_empty(), "expected class refs in objc-tiny");
 
     let mut saw_greeter_local = false;
     let mut saw_external = false;
     for r in &refs {
         match r {
-            RefTarget::Local { name: Some("Greeter"), .. } => saw_greeter_local = true,
+            RefTarget::Local {
+                name: Some("Greeter"),
+                ..
+            } => saw_greeter_local = true,
             RefTarget::External { name, .. } => {
                 // NSMutableString or another Foundation class.
                 assert!(!name.is_empty());
@@ -341,7 +340,10 @@ fn fat_slice_decodes_objc_runtime() {
     let bytes = read(OBJC_TINY_FAT);
     let bin = MachoBinary::parse(&bytes).unwrap();
     let rt = bin.objc().expect("fat-slice parse must yield ObjcRuntime");
-    assert!(rt.classes().any(|c| c.ro().map(|r| r.name()) == Some("Greeter")));
+    assert!(
+        rt.classes()
+            .any(|c| c.ro().map(|r| r.name()) == Some("Greeter"))
+    );
 }
 
 #[test]
@@ -407,9 +409,8 @@ fn smoke_codesign_decodes_swift_bridged_classes() {
 #[test]
 #[ignore]
 fn smoke_calculator_decodes_classes_and_protocols() {
-    let bytes = match std::fs::read(
-        "/System/Applications/Calculator.app/Contents/MacOS/Calculator",
-    ) {
+    let bytes = match std::fs::read("/System/Applications/Calculator.app/Contents/MacOS/Calculator")
+    {
         Ok(b) => b,
         Err(_) => return,
     };

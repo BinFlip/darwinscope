@@ -135,8 +135,8 @@ pub mod import;
 pub mod objc;
 pub mod ptrauth;
 pub mod segment;
-pub mod symbol;
 pub mod swift;
+pub mod symbol;
 pub mod util;
 
 pub use binary::MachoBinary;
@@ -154,10 +154,10 @@ pub use block::{
 // Objective-C runtime re-exports. Visible at the crate root for
 // ergonomic consumers; the full surface lives in [`crate::objc`].
 pub use objc::{
-    ClassIter, ClassRefIter, ConformanceEdge, ConformanceIter, ImageInfo, Ivar, IvarIter,
-    Method, MethodIter, MethodKind, ObjcCategory, ObjcClass, ObjcProtocol, ObjcRuntime,
-    ParsedAttribute, ParsedAttributes, ProtoRefIter, ProtocolIter, ProtocolNameIter, Property,
-    PropertyIter, RefTarget, SelRefIter, SuperRefIter,
+    ClassIter, ClassRefIter, ConformanceEdge, ConformanceIter, ImageInfo, Ivar, IvarIter, Method,
+    MethodIter, MethodKind, ObjcCategory, ObjcClass, ObjcProtocol, ObjcRuntime, ParsedAttribute,
+    ParsedAttributes, Property, PropertyIter, ProtoRefIter, ProtocolIter, ProtocolNameIter,
+    RefTarget, SelRefIter, SuperRefIter,
 };
 
 // Swift 5 type-metadata re-exports. Visible at the crate root for
@@ -169,10 +169,9 @@ pub use swift::{
     DynamicReplacementScope, FieldDescriptor, FieldDescriptorKind, FieldIter, FieldRecord,
     FieldRecordFlags, FieldRecordIter, ForeignMetadataInit, GenericContextHeader,
     InvertibleProtocolSet, MetadataInitializationKind, MethodDescriptorFlags,
-    ObjcResilientClassStubInfo, OverrideEntry, OverrideEntryIter, OverrideTableHeader,
-    ParentChain, ParentContext, PrespecializationIter, ProtocolIter as SwiftProtocolIter,
-    ReplacementIter, ResilientSuperclass, SingletonMetadataInit, SingletonMetadataPointer,
-    SwiftMethodKind, SwiftProtocol, SwiftRuntime, TypeContextDescriptorFlags, TypeDescriptor,
-    TypeIter, TypeKindBody, TypeReference, TypeReferenceKind, VTableEntry, VTableHeader,
-    VTableIter,
+    ObjcResilientClassStubInfo, OverrideEntry, OverrideEntryIter, OverrideTableHeader, ParentChain,
+    ParentContext, PrespecializationIter, ProtocolIter as SwiftProtocolIter, ReplacementIter,
+    ResilientSuperclass, SingletonMetadataInit, SingletonMetadataPointer, SwiftMethodKind,
+    SwiftProtocol, SwiftRuntime, TypeContextDescriptorFlags, TypeDescriptor, TypeIter,
+    TypeKindBody, TypeReference, TypeReferenceKind, VTableEntry, VTableHeader, VTableIter,
 };

@@ -103,34 +103,34 @@ impl<'a, 'p> Iterator for CaptureIter<'a, 'p> {
         let num_metadata_sources = read_u32_le_at(header, 4)?;
         let num_bindings = read_u32_le_at(header, 8)?;
 
-            // Compute the (lower-bound) descriptor end. Bindings are
-            // omitted from this calculation because their per-entry
-            // size depends on the binding kind — failing to size
-            // them correctly would mis-align the next descriptor's
-            // header, but for v0.1 we're conservative: stop after
-            // metadata sources. If bindings are non-zero AND there
-            // are more bytes left in the section, we bail out of the
-            // iterator after this row. (Real-world usage: most
-            // closures emit num_bindings == 0.)
-            let after_captures = u64::from(num_capture_types)
-                .checked_mul(CAPTURE_TYPE_RECORD_SIZE)
-                .and_then(|n| n.checked_add(CAPTURE_HEADER_SIZE))?;
-            let after_sources = u64::from(num_metadata_sources)
-                .checked_mul(METADATA_SOURCE_RECORD_SIZE)
-                .and_then(|n| n.checked_add(after_captures))?;
-            let next_off_offset = usize::try_from(after_sources).ok()?;
-            let next_off = start_off.checked_add(next_off_offset)?;
+        // Compute the (lower-bound) descriptor end. Bindings are
+        // omitted from this calculation because their per-entry
+        // size depends on the binding kind — failing to size
+        // them correctly would mis-align the next descriptor's
+        // header, but for v0.1 we're conservative: stop after
+        // metadata sources. If bindings are non-zero AND there
+        // are more bytes left in the section, we bail out of the
+        // iterator after this row. (Real-world usage: most
+        // closures emit num_bindings == 0.)
+        let after_captures = u64::from(num_capture_types)
+            .checked_mul(CAPTURE_TYPE_RECORD_SIZE)
+            .and_then(|n| n.checked_add(CAPTURE_HEADER_SIZE))?;
+        let after_sources = u64::from(num_metadata_sources)
+            .checked_mul(METADATA_SOURCE_RECORD_SIZE)
+            .and_then(|n| n.checked_add(after_captures))?;
+        let next_off_offset = usize::try_from(after_sources).ok()?;
+        let next_off = start_off.checked_add(next_off_offset)?;
 
-            let descriptor_va = section.vmaddr.wrapping_add(start_off as u64);
+        let descriptor_va = section.vmaddr.wrapping_add(start_off as u64);
 
-            self.cursor = if num_bindings != 0 {
-                // Bindings of unknown size — stop after this row.
-                section.body.len()
-            } else if next_off > section.body.len() {
-                section.body.len()
-            } else {
-                next_off
-            };
+        self.cursor = if num_bindings != 0 {
+            // Bindings of unknown size — stop after this row.
+            section.body.len()
+        } else if next_off > section.body.len() {
+            section.body.len()
+        } else {
+            next_off
+        };
 
         Some(CaptureDescriptor {
             address: descriptor_va,

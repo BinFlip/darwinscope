@@ -27,11 +27,12 @@
 use std::{collections::HashSet, marker::PhantomData};
 
 use crate::objc::{
+    ObjcRuntime,
     class::decode_class_name,
-    method::{method_list_iter, MethodIter},
-    property::{property_list_iter, PropertyIter},
-    protocol::{protocol_name_iter, ProtocolNameIter},
-    strip_objc_symbol_prefix, ObjcRuntime,
+    method::{MethodIter, method_list_iter},
+    property::{PropertyIter, property_list_iter},
+    protocol::{ProtocolNameIter, protocol_name_iter},
+    strip_objc_symbol_prefix,
 };
 
 const CATEGORY_BASE_SIZE: usize = 48;
@@ -97,10 +98,10 @@ impl<'a, 'p> ObjcCategory<'a, 'p> {
     /// Returns `None` when both fail (heavily stripped / corrupt
     /// input).
     pub fn class_name(&self) -> Option<&'a str> {
-        if self.class_va != 0 {
-            if let Some(n) = decode_class_name(self.rt, self.class_va) {
-                return Some(n);
-            }
+        if self.class_va != 0
+            && let Some(n) = decode_class_name(self.rt, self.class_va)
+        {
+            return Some(n);
         }
         if let Some((sym, _)) = self.rt.binds_by_va.get(&self.cls_slot_va) {
             return Some(strip_objc_symbol_prefix(sym));
@@ -203,10 +204,7 @@ impl<'a, 'p> Iterator for CategoryIter<'a, 'p> {
     }
 }
 
-fn decode_category<'a, 'p>(
-    rt: &'p ObjcRuntime<'a>,
-    cat_va: u64,
-) -> Option<ObjcCategory<'a, 'p>> {
+fn decode_category<'a, 'p>(rt: &'p ObjcRuntime<'a>, cat_va: u64) -> Option<ObjcCategory<'a, 'p>> {
     let want_class_props = rt.image_info.has_category_class_properties();
     let want_size = if want_class_props {
         CATEGORY_WITH_CLASS_PROPS_SIZE

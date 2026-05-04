@@ -40,11 +40,12 @@ use bitflags::bitflags;
 
 use crate::{
     objc::{
-        ivar::{ivar_list_iter, IvarIter},
-        method::{method_list_iter, MethodIter},
-        property::{property_list_iter, PropertyIter},
-        protocol::{protocol_name_iter, ProtocolNameIter},
-        strip_objc_symbol_prefix, ObjcRuntime,
+        ObjcRuntime,
+        ivar::{IvarIter, ivar_list_iter},
+        method::{MethodIter, method_list_iter},
+        property::{PropertyIter, property_list_iter},
+        protocol::{ProtocolNameIter, protocol_name_iter},
+        strip_objc_symbol_prefix,
     },
     util::read_u32_le_at,
 };
@@ -162,10 +163,10 @@ impl<'a, 'p> ObjcClass<'a, 'p> {
     /// `None` for root classes, opaque external superclasses, or
     /// unresolvable slots.
     pub fn superclass_name(&self) -> Option<&'a str> {
-        if self.superclass != 0 {
-            if let Some(decoded) = decode_class_name(self.rt, self.superclass) {
-                return Some(decoded);
-            }
+        if self.superclass != 0
+            && let Some(decoded) = decode_class_name(self.rt, self.superclass)
+        {
+            return Some(decoded);
         }
         // Cross-image bind: the superclass slot lives at
         // (class_t address + 8).
@@ -391,10 +392,7 @@ fn mask_class_ro_pointer(rt: &ObjcRuntime<'_>, bits: u64) -> Option<u64> {
     }
 }
 
-fn decode_class_ro<'a, 'p>(
-    rt: &'p ObjcRuntime<'a>,
-    ro_va: u64,
-) -> Option<ClassRo<'a, 'p>> {
+fn decode_class_ro<'a, 'p>(rt: &'p ObjcRuntime<'a>, ro_va: u64) -> Option<ClassRo<'a, 'p>> {
     let bytes = rt.read_bytes(ro_va, CLASS_RO_T_SIZE)?;
 
     let raw_flags = read_u32_le_at(bytes, 0)?;
@@ -477,14 +475,14 @@ impl<'a, 'p> ClassIter<'a, 'p> {
 impl<'a, 'p> Iterator for ClassIter<'a, 'p> {
     type Item = ObjcClass<'a, 'p>;
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(meta_va) = self.pending_meta.take() {
-            if let Some(c) = decode_class(self.rt, meta_va, true) {
-                return Some(c);
-            }
-            // If the metaclass decode fails fall through to the
-            // next instance class — we deliberately do NOT recurse
-            // through the metaclass's own `isa` (root metaclasses
-            // self-loop, which would make iteration non-terminating).
+        // If the metaclass decode fails fall through to the
+        // next instance class — we deliberately do NOT recurse
+        // through the metaclass's own `isa` (root metaclasses
+        // self-loop, which would make iteration non-terminating).
+        if let Some(meta_va) = self.pending_meta.take()
+            && let Some(c) = decode_class(self.rt, meta_va, true)
+        {
+            return Some(c);
         }
 
         loop {
@@ -559,10 +557,7 @@ pub(crate) fn decode_class<'a, 'p>(
 /// Walks the class's `bits → class_ro_t.name` indirection. Returns
 /// `None` when `class_va` doesn't decode as a valid `class_t` or
 /// when the name pointer fails to resolve.
-pub(crate) fn decode_class_name<'a>(
-    rt: &ObjcRuntime<'a>,
-    class_va: u64,
-) -> Option<&'a str> {
+pub(crate) fn decode_class_name<'a>(rt: &ObjcRuntime<'a>, class_va: u64) -> Option<&'a str> {
     rt.read_bytes(class_va, CLASS_T_SIZE)?;
     let bits_slot_va = class_va.checked_add(CLASS_T_BITS_OFFSET as u64)?;
     let class_ro_va = if let Some(&target) = rt.rebases_by_va.get(&bits_slot_va) {

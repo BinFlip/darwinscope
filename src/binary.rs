@@ -25,8 +25,8 @@ use core::convert::TryFrom;
 use goblin::mach::{
     Mach, MachO,
     load_command::{
-        CommandVariant, LinkeditDataCommand, LC_VERSION_MIN_IPHONEOS, LC_VERSION_MIN_MACOSX,
-        LC_VERSION_MIN_TVOS, LC_VERSION_MIN_WATCHOS, PLATFORM_IOS, PLATFORM_MACOS, PLATFORM_TVOS,
+        CommandVariant, LC_VERSION_MIN_IPHONEOS, LC_VERSION_MIN_MACOSX, LC_VERSION_MIN_TVOS,
+        LC_VERSION_MIN_WATCHOS, LinkeditDataCommand, PLATFORM_IOS, PLATFORM_MACOS, PLATFORM_TVOS,
         PLATFORM_WATCHOS,
     },
 };
@@ -41,8 +41,8 @@ use crate::{
     error::{Error, Result},
     export::ExportIter,
     fixup::{
-        build_bind_iter, build_rebase_iter, BindIter, ChainedFixups, ChainedImport, RebaseIter,
-        SegmentLoc,
+        BindIter, ChainedFixups, ChainedImport, RebaseIter, SegmentLoc, build_bind_iter,
+        build_rebase_iter,
     },
     import::{Import, ImportIter},
     objc::ObjcRuntime,
@@ -128,10 +128,7 @@ impl<'a> MachoBinary<'a> {
     /// crucially — wires `MachoBinary.data` to the *slice's* bytes,
     /// not the surrounding fat archive, so segment file offsets
     /// translate correctly.
-    fn parse_predicate(
-        data: &'a [u8],
-        pred: impl Fn(u32, u32) -> bool,
-    ) -> Result<Self> {
+    fn parse_predicate(data: &'a [u8], pred: impl Fn(u32, u32) -> bool) -> Result<Self> {
         match Mach::parse(data)? {
             Mach::Binary(macho) => {
                 if pred(macho.header.cputype, macho.header.cpusubtype) {
@@ -241,10 +238,9 @@ impl<'a> MachoBinary<'a> {
                     if let (Some(off), Some(end)) = (
                         lc.offset.checked_add(name_off),
                         lc.offset.checked_add(cmdsize),
-                    ) {
-                        if let Some(s) = read_lc_str(data, off, end) {
-                            dylinker = Some(s);
-                        }
+                    ) && let Some(s) = read_lc_str(data, off, end)
+                    {
+                        dylinker = Some(s);
                     }
                 }
                 CommandVariant::FunctionStarts(c) => {
@@ -902,7 +898,12 @@ pub struct BuildTool {
     pub version: Version,
 }
 
-fn arch_matches(actual_cputype: u32, actual_subtype: u32, want_cputype: u32, want_subtype: u32) -> bool {
+fn arch_matches(
+    actual_cputype: u32,
+    actual_subtype: u32,
+    want_cputype: u32,
+    want_subtype: u32,
+) -> bool {
     if actual_cputype != want_cputype {
         return false;
     }

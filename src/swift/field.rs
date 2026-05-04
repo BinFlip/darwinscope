@@ -31,8 +31,9 @@
 
 use crate::{
     swift::{
+        SwiftRuntime,
         context::{FieldDescriptorKind, FieldRecordFlags},
-        reflstr, SwiftRuntime,
+        reflstr,
     },
     util::{read_i32_le_at, read_u16_le_at, read_u32_le_at, relative_pointer},
 };
@@ -172,50 +173,49 @@ impl<'a, 'p> Iterator for FieldIter<'a, 'p> {
         }
         let header = section.body.get(start_off..header_end)?;
 
-            let mangled_rel = read_i32_le_at(header, 0).unwrap_or(0);
-            let superclass_rel = read_i32_le_at(header, 4).unwrap_or(0);
-            let kind_raw = read_u16_le_at(header, 8).unwrap_or(0);
-            let field_record_size = read_u16_le_at(header, 10).unwrap_or(12);
-            let num_fields = read_u32_le_at(header, 12).unwrap_or(0);
+        let mangled_rel = read_i32_le_at(header, 0).unwrap_or(0);
+        let superclass_rel = read_i32_le_at(header, 4).unwrap_or(0);
+        let kind_raw = read_u16_le_at(header, 8).unwrap_or(0);
+        let field_record_size = read_u16_le_at(header, 10).unwrap_or(12);
+        let num_fields = read_u32_le_at(header, 12).unwrap_or(0);
 
-            // Compute the start of the next record. If the size
-            // arithmetic overflows or the records run past the
-            // section body, fail-soft and stop.
-            let body_size = u64::from(num_fields).checked_mul(u64::from(field_record_size));
-            let total = body_size
-                .and_then(|b| b.checked_add(FIELD_DESCRIPTOR_HEADER_SIZE))
-                .and_then(|t| usize::try_from(t).ok());
-            let next_off = total
-                .and_then(|t| start_off.checked_add(t));
-            self.cursor = match next_off {
-                Some(off) if off <= section.body.len() => off,
-                Some(_) | None => {
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!(
-                        "darwinscope::swift: field descriptor at section+0x{:x} overruns __swift5_fieldmd — stop",
-                        start_off,
-                    );
-                    return None;
-                }
-            };
+        // Compute the start of the next record. If the size
+        // arithmetic overflows or the records run past the
+        // section body, fail-soft and stop.
+        let body_size = u64::from(num_fields).checked_mul(u64::from(field_record_size));
+        let total = body_size
+            .and_then(|b| b.checked_add(FIELD_DESCRIPTOR_HEADER_SIZE))
+            .and_then(|t| usize::try_from(t).ok());
+        let next_off = total.and_then(|t| start_off.checked_add(t));
+        self.cursor = match next_off {
+            Some(off) if off <= section.body.len() => off,
+            Some(_) | None => {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    "darwinscope::swift: field descriptor at section+0x{:x} overruns __swift5_fieldmd — stop",
+                    start_off,
+                );
+                return None;
+            }
+        };
 
-            let descriptor_va = section.vmaddr.wrapping_add(start_off as u64);
+        let descriptor_va = section.vmaddr.wrapping_add(start_off as u64);
 
-            let mangled_slot_va = descriptor_va;
-            let mangled_type_name = if mangled_rel == 0 {
-                None
-            } else {
-                self.rt
-                    .read_cstr(relative_pointer(mangled_slot_va, mangled_rel))
-            };
+        let mangled_slot_va = descriptor_va;
+        let mangled_type_name = if mangled_rel == 0 {
+            None
+        } else {
+            self.rt
+                .read_cstr(relative_pointer(mangled_slot_va, mangled_rel))
+        };
 
-            let superclass_slot_va = descriptor_va.checked_add(4)?;
-            let superclass_mangled_name = if superclass_rel == 0 {
-                None
-            } else {
-                self.rt
-                    .read_cstr(relative_pointer(superclass_slot_va, superclass_rel))
-            };
+        let superclass_slot_va = descriptor_va.checked_add(4)?;
+        let superclass_mangled_name = if superclass_rel == 0 {
+            None
+        } else {
+            self.rt
+                .read_cstr(relative_pointer(superclass_slot_va, superclass_rel))
+        };
 
         Some(FieldDescriptor {
             rt: self.rt,

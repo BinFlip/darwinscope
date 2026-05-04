@@ -22,7 +22,7 @@
 //! requirement tables is post-v0.1.
 
 use crate::{
-    swift::{context::ContextDescriptorFlags, SwiftRuntime},
+    swift::{SwiftRuntime, context::ContextDescriptorFlags},
     util::{read_i32_le_at, read_u32_le_at, relative_pointer},
 };
 

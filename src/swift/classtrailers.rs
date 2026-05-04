@@ -53,11 +53,11 @@
 
 use crate::{
     swift::{
+        SwiftRuntime,
         context::{ContextDescriptorFlags, MetadataInitializationKind},
         typedescriptor::{
             ClassBody, DefaultOverrideTableHeader, OverrideTableHeader, VTableHeader,
         },
-        SwiftRuntime,
     },
     util::{read_i32_le_at, read_u16_le_at, read_u32_le_at, relative_pointer},
 };
@@ -338,10 +338,10 @@ pub(crate) fn decode_class_trailers<'a>(
     }
 
     // 11. Default override table
-    if type_flags.class_has_default_override_table() {
-        if let Some((header, _end)) = decode_default_override_header(rt, cursor) {
-            body.default_override_table_header = Some(header);
-        }
+    if type_flags.class_has_default_override_table()
+        && let Some((header, _end)) = decode_default_override_header(rt, cursor)
+    {
+        body.default_override_table_header = Some(header);
     }
 }
 
@@ -522,10 +522,7 @@ fn decode_default_override_header(
     ))
 }
 
-fn decode_prespecializations(
-    rt: &SwiftRuntime<'_>,
-    header_va: u64,
-) -> Option<(u32, u64, u64)> {
+fn decode_prespecializations(rt: &SwiftRuntime<'_>, header_va: u64) -> Option<(u32, u64, u64)> {
     // CanonicalSpecializedMetadatasListCount
     let count_bytes = rt.read_bytes(header_va, 4)?;
     let count = read_u32_le_at(count_bytes, 0)?;

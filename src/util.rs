@@ -192,7 +192,10 @@ pub fn read_cstr_at(data: &[u8], off: usize) -> Option<&str> {
 /// fields without an extra allocation or bounds check.
 pub fn cstr_from_fixed<const N: usize>(bytes: &[u8; N]) -> &str {
     let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
-    bytes.get(..len).and_then(|s| core::str::from_utf8(s).ok()).unwrap_or("")
+    bytes
+        .get(..len)
+        .and_then(|s| core::str::from_utf8(s).ok())
+        .unwrap_or("")
 }
 
 /// Read a big-endian `u32` at byte offset `off` in `data`.

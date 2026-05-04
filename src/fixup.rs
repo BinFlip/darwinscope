@@ -882,9 +882,9 @@ fn decode_segment_chains<'a>(
                 | PointerFormat::Arm64eUserland
                 | PointerFormat::Arm64eUserland24
                 | PointerFormat::Arm64eSharedCache => 8u64,
-                PointerFormat::Ptr64
-                | PointerFormat::Ptr64Offset
-                | PointerFormat::Arm64eKernel => 4u64,
+                PointerFormat::Ptr64 | PointerFormat::Ptr64Offset | PointerFormat::Arm64eKernel => {
+                    4u64
+                }
                 PointerFormat::Other(_) => break,
             };
             let advance = next_stride.saturating_mul(stride_bytes);

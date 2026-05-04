@@ -221,8 +221,8 @@ impl<'a> Signature<'a> {
         let length = read_u32_be_at(data, len_off)?;
         let count = read_u32_be_at(data, count_off)?;
         // Sanity: total length must cover the index array.
-        let need = SUPERBLOB_HEADER_SIZE
-            .checked_add((count as usize).checked_mul(BLOB_INDEX_SIZE)?)?;
+        let need =
+            SUPERBLOB_HEADER_SIZE.checked_add((count as usize).checked_mul(BLOB_INDEX_SIZE)?)?;
         if (length as usize) < need {
             return None;
         }
@@ -822,10 +822,10 @@ impl<'a> Iterator for CodeDirectoryIter<'a> {
             let i = self.cursor;
             self.cursor = self.cursor.checked_add(1)?;
             let target = Slot::AlternateCodeDirectory(i);
-            if let Some(blob) = self.sig.find_blob_bytes(target) {
-                if let Some(cd) = CodeDirectory::parse(blob) {
-                    return Some(cd);
-                }
+            if let Some(blob) = self.sig.find_blob_bytes(target)
+                && let Some(cd) = CodeDirectory::parse(blob)
+            {
+                return Some(cd);
             }
         }
         None
@@ -1120,12 +1120,11 @@ fn der_collect_keys(payload: &[u8]) -> Vec<String> {
         }
         // Each entry is a SEQUENCE (tag 0x30) whose first child
         // is the UTF8String key.
-        if hdr.tag == 0x30 {
-            if let Some(seq_body) = entries.get(body_start..body_end) {
-                if let Some(key) = der_first_utf8_string(seq_body) {
-                    out.push(key);
-                }
-            }
+        if hdr.tag == 0x30
+            && let Some(seq_body) = entries.get(body_start..body_end)
+            && let Some(key) = der_first_utf8_string(seq_body)
+        {
+            out.push(key);
         }
         cursor = body_end;
     }

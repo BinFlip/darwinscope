@@ -16,8 +16,8 @@
 use core::marker::PhantomData;
 
 use goblin::mach::symbols::{
-    Nlist, N_ABS, N_EXT, N_INDR, N_PBUD, N_PEXT, N_SECT, N_STAB, N_TYPE, N_UNDF,
-    N_WEAK_DEF, N_WEAK_REF, SymbolIterator as GoblinSymbolIter,
+    N_ABS, N_EXT, N_INDR, N_PBUD, N_PEXT, N_SECT, N_STAB, N_TYPE, N_UNDF, N_WEAK_DEF, N_WEAK_REF,
+    Nlist, SymbolIterator as GoblinSymbolIter,
 };
 
 /// View over one entry of the `LC_SYMTAB` nlist array.

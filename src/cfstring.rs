@@ -238,14 +238,8 @@ impl<'a, 'p> Iterator for CFStringIter<'a, 'p> {
         let raw_str = read_u64_le_at(body, str_off).unwrap_or(0);
         let length = read_u64_le_at(body, length_off).unwrap_or(0);
 
-        let entry_va = self
-            .rt
-            .section_vmaddr
-            .wrapping_add(entry_off as u64);
-        let str_slot_va = self
-            .rt
-            .section_vmaddr
-            .wrapping_add(str_off as u64);
+        let entry_va = self.rt.section_vmaddr.wrapping_add(entry_off as u64);
+        let str_slot_va = self.rt.section_vmaddr.wrapping_add(str_off as u64);
         let body_address = resolve_pointer(self.rt, str_slot_va, raw_str);
 
         let encoding = CFStringEncoding::from_flags(flags);
@@ -351,7 +345,7 @@ fn decode_body<'a>(
 /// surrogate pairs. Pulled out as a free function so the iterator's
 /// `next` body stays readable.
 fn decode_utf16_le(bytes: &[u8]) -> Option<String> {
-    if bytes.len() % 2 != 0 {
+    if !bytes.len().is_multiple_of(2) {
         return None;
     }
     let mut units: Vec<u16> = Vec::with_capacity(bytes.len() / 2);
@@ -372,12 +366,24 @@ mod tests {
     #[test]
     fn encoding_from_flags_ascii_and_utf16() {
         // Per RESEARCH.md:2181-2182.
-        assert_eq!(CFStringEncoding::from_flags(0x07c8), CFStringEncoding::Ascii);
-        assert_eq!(CFStringEncoding::from_flags(0x07d0), CFStringEncoding::Utf16Le);
+        assert_eq!(
+            CFStringEncoding::from_flags(0x07c8),
+            CFStringEncoding::Ascii
+        );
+        assert_eq!(
+            CFStringEncoding::from_flags(0x07d0),
+            CFStringEncoding::Utf16Le
+        );
         // Reserved high bits beyond the encoding selector are
         // ignored — both of these still narrow to ASCII / UTF-16.
-        assert_eq!(CFStringEncoding::from_flags(0xffff_07c8), CFStringEncoding::Ascii);
-        assert_eq!(CFStringEncoding::from_flags(0xdead_07d0), CFStringEncoding::Utf16Le);
+        assert_eq!(
+            CFStringEncoding::from_flags(0xffff_07c8),
+            CFStringEncoding::Ascii
+        );
+        assert_eq!(
+            CFStringEncoding::from_flags(0xdead_07d0),
+            CFStringEncoding::Utf16Le
+        );
         // Anything else round-trips verbatim.
         assert!(matches!(
             CFStringEncoding::from_flags(0x1234),

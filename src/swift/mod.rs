@@ -75,8 +75,8 @@ use crate::{
 
 mod capture;
 mod classtrailers;
-mod context;
 mod conformance;
+mod context;
 mod field;
 mod parent;
 mod protocol;
@@ -88,9 +88,8 @@ mod vtable;
 
 pub use capture::{CaptureDescriptor, CaptureIter};
 pub use classtrailers::{
-    ForeignMetadataInit, GenericContextHeader, InvertibleProtocolSet,
-    ObjcResilientClassStubInfo, PrespecializationIter, ResilientSuperclass,
-    SingletonMetadataInit, SingletonMetadataPointer,
+    ForeignMetadataInit, GenericContextHeader, InvertibleProtocolSet, ObjcResilientClassStubInfo,
+    PrespecializationIter, ResilientSuperclass, SingletonMetadataInit, SingletonMetadataPointer,
 };
 pub use conformance::{Conformance, ConformanceIter, TypeReference};
 pub use context::{

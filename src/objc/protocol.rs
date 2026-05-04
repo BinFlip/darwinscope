@@ -27,9 +27,10 @@ use std::marker::PhantomData;
 
 use crate::{
     objc::{
-        method::{method_list_iter, MethodIter},
-        property::{property_list_iter, PropertyIter},
-        strip_objc_symbol_prefix, ObjcRuntime,
+        ObjcRuntime,
+        method::{MethodIter, method_list_iter},
+        property::{PropertyIter, property_list_iter},
+        strip_objc_symbol_prefix,
     },
     util::{read_u32_le_at, read_u64_le_at},
 };
@@ -210,11 +211,10 @@ pub(crate) fn decode_protocol<'a, 'p>(
     // (`objc-runtime-new.h:1545`): a field is present iff
     // `offsetof(field) + sizeof(field) <= size`. We require the
     // full pointer-sized slot (8 bytes) to exist on disk.
-    let class_properties_va = if size as usize >= (PROTOCOL_FIELD_CLASS_PROPERTIES_OFFSET as usize)
-        .saturating_add(8)
+    let class_properties_va = if size as usize
+        >= (PROTOCOL_FIELD_CLASS_PROPERTIES_OFFSET as usize).saturating_add(8)
     {
-        let slot_va =
-            proto_va.checked_add(u64::from(PROTOCOL_FIELD_CLASS_PROPERTIES_OFFSET))?;
+        let slot_va = proto_va.checked_add(u64::from(PROTOCOL_FIELD_CLASS_PROPERTIES_OFFSET))?;
         rt.read_bytes(slot_va, 8)?;
         let resolved = rt.resolve_pointer(slot_va).unwrap_or(0);
         if resolved == 0 { None } else { Some(resolved) }
@@ -324,10 +324,10 @@ impl<'a, 'p> Iterator for ProtocolNameIter<'a, 'p> {
             let slot_va = base.checked_add(i.checked_mul(8)?)?;
             let proto_va = self.rt.resolve_pointer(slot_va).unwrap_or(0);
             // Try local resolution first.
-            if proto_va != 0 {
-                if let Some(p) = decode_protocol(self.rt, proto_va) {
-                    return Some(p.name());
-                }
+            if proto_va != 0
+                && let Some(p) = decode_protocol(self.rt, proto_va)
+            {
+                return Some(p.name());
             }
             // Cross-image bind?
             if let Some((sym, _)) = self.rt.binds_by_va.get(&slot_va) {

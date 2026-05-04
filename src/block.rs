@@ -245,9 +245,7 @@ impl<'a> BlockRuntime<'a> {
     pub(crate) fn build(bin: &MachoBinary<'a>) -> Option<Self> {
         if !bin.header().is_64() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                "darwinscope::block: 32-bit Mach-O — Block walker is 64-bit only"
-            );
+            tracing::debug!("darwinscope::block: 32-bit Mach-O — Block walker is 64-bit only");
             return None;
         }
 
@@ -695,9 +693,9 @@ mod tests {
         // writes; pin them so a refactor of the bit positions can't
         // silently break the decoder.
         assert_eq!(BLOCK_HAS_COPY_DISPOSE, 0x0200_0000);
-        assert_eq!(BLOCK_HAS_CTOR,         0x0400_0000);
-        assert_eq!(BLOCK_IS_GLOBAL,        0x1000_0000);
-        assert_eq!(BLOCK_HAS_STRET,        0x2000_0000);
-        assert_eq!(BLOCK_HAS_SIGNATURE,    0x4000_0000);
+        assert_eq!(BLOCK_HAS_CTOR, 0x0400_0000);
+        assert_eq!(BLOCK_IS_GLOBAL, 0x1000_0000);
+        assert_eq!(BLOCK_HAS_STRET, 0x2000_0000);
+        assert_eq!(BLOCK_HAS_SIGNATURE, 0x4000_0000);
     }
 }

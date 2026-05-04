@@ -21,9 +21,11 @@
 use std::path::Path;
 
 use darwinscope::{
-    binary::CPU_SUBTYPE_ANY,
-    codesign::{cd_version, CdFlags, CodeDirectory, HashType, Signature, Slot, CSMAGIC_EMBEDDED_SIGNATURE},
     MachoBinary,
+    binary::CPU_SUBTYPE_ANY,
+    codesign::{
+        CSMAGIC_EMBEDDED_SIGNATURE, CdFlags, CodeDirectory, HashType, Signature, Slot, cd_version,
+    },
 };
 
 const ADHOC_PATH: &str = "tests/samples/synthesized/hello-cli/hello-adhoc";
@@ -63,7 +65,9 @@ fn adhoc_signature_decodes_with_expected_slots() {
 fn entitled_signature_carries_entitlements_slot() {
     let bytes = read(ENTITLED_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let sig = bin.signature().expect("hello-entitled must have a signature");
+    let sig = bin
+        .signature()
+        .expect("hello-entitled must have a signature");
     let slots: Vec<Slot> = sig.blobs().map(|b| b.slot).collect();
     assert!(slots.contains(&Slot::CodeDirectory));
     assert!(
@@ -123,7 +127,10 @@ fn adhoc_has_no_team_id() {
     let bytes = read(ADHOC_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
     let cd = bin.signature().unwrap().primary_code_directory().unwrap();
-    assert!(cd.team_id().is_none(), "adhoc CD should not carry a team id");
+    assert!(
+        cd.team_id().is_none(),
+        "adhoc CD should not carry a team id"
+    );
 }
 
 #[test]
@@ -145,8 +152,7 @@ fn adhoc_cd_hash_matches_codesign_dvvv_recorded_value() {
     let bytes = read(ADHOC_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
     let cd = bin.signature().unwrap().primary_code_directory().unwrap();
-    let want_full =
-        hex_decode("415228ae3f617310032bc592d56bbdebe2f285eaedb6fd2dfd4c449bb837491c");
+    let want_full = hex_decode("415228ae3f617310032bc592d56bbdebe2f285eaedb6fd2dfd4c449bb837491c");
     let want_trunc = hex_decode("415228ae3f617310032bc592d56bbdebe2f285ea");
     assert_eq!(cd.cd_hash(), want_full);
     assert_eq!(&cd.cd_hash_truncated()[..], want_trunc.as_slice());
@@ -159,8 +165,7 @@ fn entitled_code_directory_decodes() {
     let cd = bin.signature().unwrap().primary_code_directory().unwrap();
     assert_eq!(cd.hash_type(), HashType::Sha256);
     assert!(cd.identifier().unwrap().starts_with("hello-entitled"));
-    let want_full =
-        hex_decode("cdc7072eb79b53163dad4a573e70497edaed421a6efedff14551c6eb9851e42e");
+    let want_full = hex_decode("cdc7072eb79b53163dad4a573e70497edaed421a6efedff14551c6eb9851e42e");
     assert_eq!(cd.cd_hash(), want_full);
 }
 
@@ -352,7 +357,11 @@ fn dataoff(bin: &MachoBinary<'_>) -> usize {
 fn adhoc_requirements_is_empty_placeholder() {
     let bytes = read(ADHOC_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let req = bin.signature().unwrap().requirements().expect("adhoc has Requirements slot");
+    let req = bin
+        .signature()
+        .unwrap()
+        .requirements()
+        .expect("adhoc has Requirements slot");
     assert_eq!(req.count(), 0, "adhoc Requirements is empty");
     assert!(req.is_empty());
     assert_eq!(req.len(), 12, "header (8) + count (4) = 12 bytes");
@@ -362,7 +371,11 @@ fn adhoc_requirements_is_empty_placeholder() {
 fn adhoc_cms_is_empty_wrapper() {
     let bytes = read(ADHOC_PATH);
     let bin = MachoBinary::parse(&bytes).unwrap();
-    let cms = bin.signature().unwrap().cms().expect("adhoc has SignatureSlot");
+    let cms = bin
+        .signature()
+        .unwrap()
+        .cms()
+        .expect("adhoc has SignatureSlot");
     assert!(!cms.is_present(), "adhoc CMS payload is empty");
     assert_eq!(cms.len(), 0);
     assert_eq!(cms.raw().len(), 0);
@@ -424,7 +437,10 @@ fn codesign_arm64_slice_carries_real_cms() {
             cms.is_present(),
             "Apple-signed codesign must carry a real CMS payload"
         );
-        assert!(cms.len() > 100, "CMS payload should be more than a placeholder");
+        assert!(
+            cms.len() > 100,
+            "CMS payload should be more than a placeholder"
+        );
     }
     if let Some(req) = sig.requirements() {
         eprintln!(
@@ -437,7 +453,7 @@ fn codesign_arm64_slice_carries_real_cms() {
 
 fn hex_decode(s: &str) -> Vec<u8> {
     let bytes = s.as_bytes();
-    assert!(bytes.len() % 2 == 0);
+    assert!(bytes.len().is_multiple_of(2));
     let mut out = Vec::with_capacity(bytes.len() / 2);
     for pair in bytes.chunks_exact(2) {
         out.push((nybble(pair[0]) << 4) | nybble(pair[1]));

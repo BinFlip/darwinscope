@@ -16,9 +16,9 @@
 use std::path::Path;
 
 use darwinscope::{
+    MachoBinary,
     binary::CPU_SUBTYPE_ANY,
     fixup::{ImportsFormat, PointerFormat},
-    MachoBinary,
 };
 
 const ARM64_PATH: &str = "tests/samples/synthesized/hello-cli/hello-arm64";
@@ -109,8 +109,7 @@ fn chained_imports_format_is_known() {
 #[test]
 fn chained_fixups_in_fat_slice_decode() {
     let bytes = read(FAT_PATH);
-    let bin =
-        MachoBinary::parse_with_arch(&bytes, CPU_TYPE_ARM64, CPU_SUBTYPE_ANY).unwrap();
+    let bin = MachoBinary::parse_with_arch(&bytes, CPU_TYPE_ARM64, CPU_SUBTYPE_ANY).unwrap();
     if let Some(cf) = bin.chained_fixups() {
         let _segs: Vec<_> = cf.segments().collect();
         let _imports: Vec<_> = cf.imports().collect();
@@ -157,7 +156,11 @@ fn x86_64_chained_binds_resolve_puts_to_libsystem() {
         .iter()
         .find(|b| b.name() == "_puts")
         .expect("_puts must be a chained bind target");
-    assert!(puts.dylib().contains("libSystem"), "got dylib={}", puts.dylib());
+    assert!(
+        puts.dylib().contains("libSystem"),
+        "got dylib={}",
+        puts.dylib()
+    );
     assert!(!puts.is_weak());
     assert!(puts.ptr_auth().is_none());
     assert!(matches!(puts.pointer_format(), PointerFormat::Ptr64Offset));
@@ -182,7 +185,11 @@ fn arm64_chained_binds_resolve_puts() {
         .iter()
         .find(|b| b.name() == "_puts")
         .expect("_puts must be a chained bind target on arm64");
-    assert!(puts.dylib().contains("libSystem"), "got dylib={}", puts.dylib());
+    assert!(
+        puts.dylib().contains("libSystem"),
+        "got dylib={}",
+        puts.dylib()
+    );
 }
 
 #[test]
@@ -213,8 +220,7 @@ fn bind_vm_address_lands_inside_data_segment() {
 #[test]
 fn fat_arm64_slice_chains_decode() {
     let bytes = read(FAT_PATH);
-    let bin =
-        MachoBinary::parse_with_arch(&bytes, CPU_TYPE_ARM64, CPU_SUBTYPE_ANY).unwrap();
+    let bin = MachoBinary::parse_with_arch(&bytes, CPU_TYPE_ARM64, CPU_SUBTYPE_ANY).unwrap();
     let _rebases: Vec<_> = bin.chained_rebases().collect();
     let binds: Vec<_> = bin.chained_binds().collect();
     assert!(binds.iter().any(|b| b.name() == "_puts"));

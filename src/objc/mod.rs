@@ -64,9 +64,8 @@ pub use category::{CategoryIter, ObjcCategory};
 pub use class::{ClassIter, ClassRo, ObjcClass};
 pub use conformance::{ConformanceEdge, ConformanceIter};
 pub use imageinfo::{
-    ImageInfo, OBJC_IMAGE_DYLD_CATEGORIES_OPTIMIZED,
-    OBJC_IMAGE_HAS_CATEGORY_CLASS_PROPERTIES, OBJC_IMAGE_IS_SIMULATED,
-    OBJC_IMAGE_OPTIMIZED_BY_DYLD, OBJC_IMAGE_OPTIMIZED_BY_DYLD_CLOSURE,
+    ImageInfo, OBJC_IMAGE_DYLD_CATEGORIES_OPTIMIZED, OBJC_IMAGE_HAS_CATEGORY_CLASS_PROPERTIES,
+    OBJC_IMAGE_IS_SIMULATED, OBJC_IMAGE_OPTIMIZED_BY_DYLD, OBJC_IMAGE_OPTIMIZED_BY_DYLD_CLOSURE,
     OBJC_IMAGE_REQUIRES_GC, OBJC_IMAGE_SIGNED_CLASS_RO, OBJC_IMAGE_SUPPORTS_GC,
     OBJC_IMAGE_SWIFT_STABLE_VERSION_MASK, OBJC_IMAGE_SWIFT_UNSTABLE_VERSION_MASK,
 };
@@ -74,9 +73,7 @@ pub use ivar::{Ivar, IvarIter};
 pub use method::{Method, MethodIter, MethodKind};
 pub use property::{ParsedAttribute, ParsedAttributes, Property, PropertyIter};
 pub use protocol::{ObjcProtocol, ProtocolIter, ProtocolNameIter};
-pub use refs::{
-    ClassRefIter, ProtoRefIter, RefTarget, SelRefIter, SuperRefIter,
-};
+pub use refs::{ClassRefIter, ProtoRefIter, RefTarget, SelRefIter, SuperRefIter};
 
 pub(crate) use section::{ObjcSection, find_section};
 
@@ -407,7 +404,10 @@ mod tests {
 
     #[test]
     fn strip_class_prefix() {
-        assert_eq!(strip_objc_symbol_prefix("_OBJC_CLASS_$_NSObject"), "NSObject");
+        assert_eq!(
+            strip_objc_symbol_prefix("_OBJC_CLASS_$_NSObject"),
+            "NSObject"
+        );
         assert_eq!(
             strip_objc_symbol_prefix("_OBJC_METACLASS_$_NSObject"),
             "NSObject"
@@ -417,6 +417,9 @@ mod tests {
             "NSCoding"
         );
         // Untouched if the prefix doesn't match.
-        assert_eq!(strip_objc_symbol_prefix("_NSConcreteStackBlock"), "_NSConcreteStackBlock");
+        assert_eq!(
+            strip_objc_symbol_prefix("_NSConcreteStackBlock"),
+            "_NSConcreteStackBlock"
+        );
     }
 }

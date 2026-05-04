@@ -41,7 +41,11 @@ fn assert_hello_exports(path: &str) {
         panic!("_main info shape: {:?}", main.info);
     }
     // No reexports / stubs in a hello-world binary.
-    assert!(exports.iter().all(|e| matches!(e.info, ExportInfo::Regular { .. })));
+    assert!(
+        exports
+            .iter()
+            .all(|e| matches!(e.info, ExportInfo::Regular { .. }))
+    );
 }
 
 #[test]

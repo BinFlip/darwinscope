@@ -19,8 +19,8 @@
 
 use crate::{
     swift::{
-        context::{MethodDescriptorFlags, SwiftMethodKind},
         SwiftRuntime,
+        context::{MethodDescriptorFlags, SwiftMethodKind},
     },
     util::{read_i32_le_at, read_u32_le_at, relative_pointer},
 };

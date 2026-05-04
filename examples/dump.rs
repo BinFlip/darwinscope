@@ -39,9 +39,7 @@ use darwinscope::{
     binary::MachoBinary,
     codesign::{HashType, Signature},
     fixup::ChainedFixups,
-    objc::{
-        ImageInfo, ObjcCategory, ObjcClass, ObjcProtocol, ObjcRuntime, Property, RefTarget,
-    },
+    objc::{ImageInfo, ObjcCategory, ObjcClass, ObjcProtocol, ObjcRuntime, Property, RefTarget},
     ptrauth::PtrAuth,
     swift::{
         ContextDescriptorKind, FieldDescriptor, SwiftProtocol, SwiftRuntime, TypeDescriptor,
@@ -135,11 +133,22 @@ fn dump_header<W: Write>(bin: &MachoBinary<'_>, w: &mut W) -> io::Result<()> {
         Some(u) => writeln!(
             w,
             "uuid           {:02X}{:02X}{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}-{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
-            u[0], u[1], u[2], u[3],
-            u[4], u[5],
-            u[6], u[7],
-            u[8], u[9],
-            u[10], u[11], u[12], u[13], u[14], u[15],
+            u[0],
+            u[1],
+            u[2],
+            u[3],
+            u[4],
+            u[5],
+            u[6],
+            u[7],
+            u[8],
+            u[9],
+            u[10],
+            u[11],
+            u[12],
+            u[13],
+            u[14],
+            u[15],
         )?,
         None => writeln!(w, "uuid           <none>")?,
     }
@@ -156,11 +165,7 @@ fn dump_header<W: Write>(bin: &MachoBinary<'_>, w: &mut W) -> io::Result<()> {
         None => writeln!(w, "sdk_version    <none>")?,
     }
     match h.source_version() {
-        Some(v) => writeln!(
-            w,
-            "source_version {}.{}.{}.{}.{}",
-            v.a, v.b, v.c, v.d, v.e
-        )?,
+        Some(v) => writeln!(w, "source_version {}.{}.{}.{}.{}", v.a, v.b, v.c, v.d, v.e)?,
         None => writeln!(w, "source_version <none>")?,
     }
     match h.dylinker() {
@@ -532,12 +537,7 @@ fn write_signature_inner<W: Write>(sig: &Signature<'_>, w: &mut W) -> io::Result
     }
 
     match sig.requirements() {
-        Some(r) => writeln!(
-            w,
-            "requirements count={} bytes={}",
-            r.count(),
-            r.len()
-        )?,
+        Some(r) => writeln!(w, "requirements count={} bytes={}", r.count(), r.len())?,
         None => writeln!(w, "requirements <none>")?,
     }
 
@@ -826,12 +826,7 @@ fn write_objc_class<W: Write>(c: &ObjcClass<'_, '_>, i: usize, w: &mut W) -> io:
     Ok(())
 }
 
-fn write_property<W: Write>(
-    p: &Property<'_>,
-    j: usize,
-    w: &mut W,
-    indent: &str,
-) -> io::Result<()> {
+fn write_property<W: Write>(p: &Property<'_>, j: usize, w: &mut W, indent: &str) -> io::Result<()> {
     let parsed = p.parsed();
     writeln!(
         w,
@@ -842,20 +837,12 @@ fn write_property<W: Write>(
         parsed.items.len()
     )?;
     for (k, it) in parsed.items.iter().enumerate() {
-        writeln!(
-            w,
-            "{indent}  attr[{k}] key={} value={}",
-            it.key, it.value
-        )?;
+        writeln!(w, "{indent}  attr[{k}] key={} value={}", it.key, it.value)?;
     }
     Ok(())
 }
 
-fn write_objc_protocol<W: Write>(
-    p: &ObjcProtocol<'_, '_>,
-    i: usize,
-    w: &mut W,
-) -> io::Result<()> {
+fn write_objc_protocol<W: Write>(p: &ObjcProtocol<'_, '_>, i: usize, w: &mut W) -> io::Result<()> {
     writeln!(
         w,
         "protocol[{i}] address=0x{:016x} name={} size={} flags=0x{:08x}",
@@ -926,11 +913,7 @@ fn write_objc_protocol<W: Write>(
     Ok(())
 }
 
-fn write_objc_category<W: Write>(
-    c: &ObjcCategory<'_, '_>,
-    i: usize,
-    w: &mut W,
-) -> io::Result<()> {
+fn write_objc_category<W: Write>(c: &ObjcCategory<'_, '_>, i: usize, w: &mut W) -> io::Result<()> {
     writeln!(
         w,
         "category[{i}] address=0x{:016x} name={} class_address=0x{:016x} class_name={}",
@@ -989,7 +972,11 @@ fn dump_swift<W: Write>(bin: &MachoBinary<'_>, w: &mut W) -> io::Result<()> {
 }
 
 fn write_swift_runtime<W: Write>(rt: &SwiftRuntime<'_>, w: &mut W) -> io::Result<()> {
-    writeln!(w, "has_entry_point                    {}", rt.has_entry_point())?;
+    writeln!(
+        w,
+        "has_entry_point                    {}",
+        rt.has_entry_point()
+    )?;
     writeln!(
         w,
         "has_builtin_descriptors            {}",
@@ -1248,7 +1235,10 @@ fn write_swift_type<W: Write>(t: &TypeDescriptor<'_, '_>, i: usize, w: &mut W) -
         writeln!(
             w,
             "  singleton_metadata_init address=0x{:016x} cache=0x{:016x} pattern=0x{:016x} completion=0x{:016x}",
-            smi.address, smi.initialization_cache_va, smi.incomplete_metadata_va, smi.completion_function_va
+            smi.address,
+            smi.initialization_cache_va,
+            smi.incomplete_metadata_va,
+            smi.completion_function_va
         )?;
     }
     if let Some(ps) = t.prespecializations() {

@@ -27,8 +27,8 @@
 
 use crate::{
     swift::{
-        context::{ContextDescriptorFlags, ContextDescriptorKind},
         SwiftRuntime,
+        context::{ContextDescriptorFlags, ContextDescriptorKind},
     },
     util::{read_i32_le_at, read_u32_le_at, relative_pointer},
 };
