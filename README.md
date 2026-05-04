@@ -3,14 +3,10 @@
 Static-analysis library for Mach-O binaries — including the Objective-C
 and Swift runtime metadata they embed.
 
-`darwinscope` is to Apple binaries what [`undelphi`] is to Delphi /
-C++Builder, [`visualbasic`] is to VB6 P-code executables, and
-[`innospect`] is to Inno Setup installers: a single crate that reads a
-byte slice and surfaces every typed structure embedded in the format.
-
-[`undelphi`]: https://github.com/BinFlip/delphi
-[`visualbasic`]: https://github.com/BinFlip/visualbasic-rs
-[`innospect`]: https://github.com/BinFlip/inno-rs
+A single crate that reads a byte slice and surfaces every typed
+structure embedded in the format: load commands, symbols, imports and
+exports, code-signing data, and the full Objective-C and Swift runtime
+metadata.
 
 ## What it extracts
 
