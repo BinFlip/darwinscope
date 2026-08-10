@@ -8,6 +8,15 @@
 //! `hello-arm64`, which carries no CoreFoundation strings, returns
 //! `None`.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::{CFStringBody, CFStringEncoding, MachoBinary};

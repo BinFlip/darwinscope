@@ -12,6 +12,15 @@
 //! values; tests here pin the merge invariants and the
 //! file-offset / vm-address round-trip.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::MachoBinary;

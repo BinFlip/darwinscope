@@ -8,6 +8,15 @@
 //! errors, garbage rejection) and the `Version` /
 //! `SourceVersion` decoders.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::binary::CPU_SUBTYPE_ANY;

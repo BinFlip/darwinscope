@@ -3,6 +3,15 @@
 //! Both fixtures must yield the same two exports:
 //! `__mh_execute_header` (image header) and `_main`.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::MachoBinary;

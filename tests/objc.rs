@@ -13,6 +13,15 @@
 //! "no ObjC content → `objc()` returns `None`" negative path on
 //! `hello-arm64`.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::{

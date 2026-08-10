@@ -18,6 +18,15 @@
 //! hand-built v0x20100 blob, and the special-/code-hash count
 //! invariants.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::{
