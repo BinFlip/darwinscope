@@ -13,6 +13,15 @@
 //! values; tests here pin the supported-format set, the legacy
 //! → empty contract, and the file-offset round-trip.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::{

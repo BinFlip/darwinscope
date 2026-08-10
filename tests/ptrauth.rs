@@ -3,6 +3,15 @@
 //! Pure bit-manipulation against hand-built `u64` slots; no fixture
 //! is required for arm64e binaries.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use darwinscope::ptrauth::{PacKey, PtrAuth, VA_MASK, strip_signature};
 
 #[test]

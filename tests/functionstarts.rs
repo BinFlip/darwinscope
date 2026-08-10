@@ -1,5 +1,14 @@
 //! `vm_to_file_offset` + `LC_FUNCTION_STARTS` integration tests.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::MachoBinary;

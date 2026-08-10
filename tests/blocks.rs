@@ -13,6 +13,15 @@
 //! buffer matching the canonical Block ABI and exercise the full
 //! `decode_literal` / `decode_descriptor` chain against it.
 
+#![allow(
+    missing_docs,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::arithmetic_side_effects,
+    clippy::indexing_slicing
+)]
+
 use std::path::Path;
 
 use darwinscope::MachoBinary;
