@@ -4,12 +4,9 @@
 //! binaries put it in `__DATA`; selector-string sections have always
 //! lived in `__TEXT`. The lookup utility checks **only** the section
 //! name — the segment is informational. Cite:
-//! [`RESEARCH.md`] §"Section names" (line 2381) and
 //! `ld64/src/ld/Options.cpp` (the
 //! `addSectionRename("__DATA", "__objc_…", "__DATA_CONST", "__objc_…")`
 //! block).
-//!
-//! [`RESEARCH.md`]: https://github.com/BinFlip/darwinscope/blob/main/RESEARCH.md
 
 use crate::binary::MachoBinary;
 
