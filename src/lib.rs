@@ -52,9 +52,7 @@
 //!   used by `dyld` for the unwinder.
 //!
 //! This metadata survives stripping because the OS depends on it for
-//! linking, dispatch, and code-signing enforcement. See
-//! [`RESEARCH.md`](https://github.com/BinFlip/darwinscope/blob/main/RESEARCH.md)
-//! for the underlying format research.
+//! linking, dispatch, and code-signing enforcement.
 //!
 //! ## Architecture
 //!
@@ -96,10 +94,8 @@
 //!
 //! ## Status
 //!
-//! v0.1 is under active development — see
-//! [`ToDo.md`](https://github.com/BinFlip/darwinscope/blob/main/ToDo.md)
-//! for the roadmap. The public API will remain unstable until v0.1
-//! ships.
+//! v0.1 is under active development. The public API will remain
+//! unstable until v0.1 ships.
 
 // The `missing_docs`, `unsafe_code`, `clippy::unwrap_used`,
 // `clippy::expect_used`, `clippy::panic`,
