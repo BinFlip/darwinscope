@@ -490,6 +490,61 @@ impl<'a, 'p> TypeDescriptor<'a, 'p> {
         })
     }
 
+    /// Resolves this type's stored-property byte offsets from its static
+    /// field-offset vector, when the type carries **statically-present**
+    /// metadata.
+    ///
+    /// Swift stores each stored property's byte offset in a *field-offset
+    /// vector* embedded in the type metadata at
+    /// `metadata + FieldOffsetVectorOffset * sizeof(void*)`; for a struct each
+    /// entry is a `uint32_t`. This is only readable from the file when the
+    /// type's complete metadata is emitted statically — i.e. the singleton
+    /// metadata pointer resolves to a non-zero VA. Generic / resilient /
+    /// lazily-initialised types compute their layout at runtime and leave the
+    /// metadata pointer relative-offset zero; for those this returns [`None`]
+    /// (the offsets are genuinely not in the binary), so a caller can fall back
+    /// to an honest-unknown layout rather than fabricate offsets.
+    ///
+    /// Returns [`None`] for non-struct kinds, when there is no field-offset
+    /// vector (`FieldOffsetVectorOffset == 0`), when the metadata is not
+    /// statically resolvable, or when the vector bytes are unreadable.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<u32>` of per-field byte offsets in declaration order, length
+    /// `num_fields`.
+    pub fn field_offsets(&self) -> Option<Vec<u32>> {
+        // Only structs have a `uint32_t` field-offset vector with a stable,
+        // pointer-size-independent entry width. Class vectors store
+        // pointer-sized offsets and enums have no field offsets; both stay
+        // honest-unknown here.
+        let TypeKindBody::Struct(s) = &self.body else {
+            return None;
+        };
+        let fovo = s.field_offset_vector_offset;
+        let num_fields = s.num_fields;
+        if fovo == 0 || num_fields == 0 {
+            return None;
+        }
+        // The metadata must be statically present (a runtime-initialised type
+        // resolves to metadata_va == 0).
+        let metadata_va = self.singleton_metadata_pointer()?.metadata_va;
+        if metadata_va == 0 {
+            return None;
+        }
+        // `FieldOffsetVectorOffset` is in pointer-size words. Swift Mach-O is
+        // 64-bit; the field-offset vector itself is `uint32_t` entries.
+        const WORD: u64 = 8;
+        let base = metadata_va.checked_add(u64::from(fovo).checked_mul(WORD)?)?;
+        let byte_len = (num_fields as usize).checked_mul(4)?;
+        let bytes = self.rt.read_bytes(base, byte_len)?;
+        let mut offsets = Vec::with_capacity(num_fields as usize);
+        for i in 0..num_fields as usize {
+            offsets.push(read_u32_le_at(bytes, i.checked_mul(4)?)?);
+        }
+        Some(offsets)
+    }
+
     /// Decoded `TargetObjCResilientClassStubInfo` block when
     /// present (class only).
     pub fn objc_resilient_class_stub_info(

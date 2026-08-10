@@ -947,7 +947,78 @@ impl<'a> DerEntitlements<'a> {
         out.dedup();
         out
     }
+
+    /// Decoded top-level entitlement key/value pairs, in on-disk order.
+    ///
+    /// Reads both the `UTF8String` key and the typed value of each
+    /// entry — [`Boolean`](DerEntitlementValue::Bool),
+    /// [`Integer`](DerEntitlementValue::Integer),
+    /// [`String`](DerEntitlementValue::String), or
+    /// [`Array`](DerEntitlementValue::Array) (nested `SEQUENCE`/`SET`).
+    /// Values with a tag the walker does not model degrade to
+    /// [`Other`](DerEntitlementValue::Other). Empty when the blob is
+    /// malformed or truncated.
+    pub fn pairs(&self) -> Vec<(String, DerEntitlementValue)> {
+        der_collect_pairs(self.payload)
+    }
 }
+
+/// A decoded DER-entitlement value (`fade7172` entries).
+///
+/// Mirrors the small set of plist types Apple emits in the DER
+/// entitlements container. Arbitrarily-nested containers are captured
+/// as [`Array`](Self::Array); anything else is preserved as
+/// [`Other`](Self::Other) carrying the raw DER tag.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DerEntitlementValue {
+    /// ASN.1 `BOOLEAN`.
+    Bool(bool),
+    /// ASN.1 `INTEGER` (folded into an `i64`; larger values saturate).
+    Integer(i64),
+    /// ASN.1 `UTF8String`.
+    String(String),
+    /// A nested `SEQUENCE`/`SET` of values.
+    Array(Vec<DerEntitlementValue>),
+    /// A value whose DER tag the walker does not model; carries the tag.
+    Other(u8),
+}
+
+impl DerEntitlementValue {
+    /// Short kind label (`bool` / `integer` / `string` / `array` /
+    /// `data`), matching the vocabulary the XML-entitlement decoder
+    /// uses.
+    #[must_use]
+    pub fn kind_label(&self) -> &'static str {
+        match self {
+            Self::Bool(_) => "bool",
+            Self::Integer(_) => "integer",
+            Self::String(_) => "string",
+            Self::Array(_) => "array",
+            Self::Other(_) => "data",
+        }
+    }
+
+    /// Flattened, human-readable rendering of the value.
+    #[must_use]
+    pub fn display(&self) -> String {
+        match self {
+            Self::Bool(b) => b.to_string(),
+            Self::Integer(i) => i.to_string(),
+            Self::String(s) => s.clone(),
+            Self::Array(items) => {
+                let inner: Vec<String> = items.iter().map(Self::display).collect();
+                format!("[{}]", inner.join(", "))
+            }
+            Self::Other(tag) => format!("<der tag 0x{tag:02x}>"),
+        }
+    }
+}
+
+/// Hard cap on decoded items in one DER array, bounding work on a
+/// corrupt container.
+const MAX_DER_ARRAY_ITEMS: usize = 1024;
+/// Maximum nesting depth for DER value decoding.
+const MAX_DER_VALUE_DEPTH: u32 = 32;
 
 /// Internal-requirements vector blob (`CSMAGIC_REQUIREMENTS =
 /// 0xfade0c01`, cite: `cs_blobs.h:93`).
@@ -1020,6 +1091,112 @@ impl<'a> Requirements<'a> {
     pub fn is_empty(&self) -> bool {
         self.count == 0
     }
+
+    /// Decodes every indexed requirement into its human-readable
+    /// expression text (the form `codesign -d -r-` / `csreq -t`
+    /// print).
+    ///
+    /// Walks the vector's `(type, offset)` index, follows each offset
+    /// to its nested [`CSMAGIC_REQUIREMENT`] blob, and evaluates the
+    /// CSEL / CSCO expression bytecode into a string such as
+    /// `identifier "com.example.app" and anchor apple generic`.
+    /// Entries that are truncated or use an unknown blob shape are
+    /// skipped; unknown opcodes degrade to a `/* opcode N */` marker
+    /// rather than aborting the whole expression.
+    pub fn decoded(&self) -> Vec<DecodedRequirement> {
+        let mut out = Vec::new();
+        // Bound the loop by both the recorded count and a hard cap so
+        // a corrupt `count` can't spin — real signatures carry ≤ 5.
+        let count = core::cmp::min(self.count as usize, MAX_REQUIREMENT_ENTRIES);
+        for i in 0..count {
+            let Some(entry_off) =
+                REQUIREMENTS_INDEX_OFFSET.checked_add(i.saturating_mul(BLOB_INDEX_SIZE))
+            else {
+                break;
+            };
+            let (Some(type_raw), Some(blob_off)) = (
+                read_u32_be_at(self.blob, entry_off),
+                read_u32_be_at(self.blob, entry_off.saturating_add(4)),
+            ) else {
+                break;
+            };
+            let kind = RequirementKind::from_raw(type_raw);
+            if let Some(text) = decode_requirement_blob(self.blob, blob_off as usize) {
+                out.push(DecodedRequirement { kind, text });
+            }
+        }
+        out
+    }
+}
+
+/// Offset of the `(type, offset)` index array within a
+/// `CSMAGIC_REQUIREMENTS` blob: past the 8-byte header and the 4-byte
+/// `count`.
+const REQUIREMENTS_INDEX_OFFSET: usize = 12;
+/// Hard cap on decoded requirement entries — a defensive bound against
+/// a corrupt `count`. Apple binaries carry at most five (one per
+/// [`RequirementKind`]).
+const MAX_REQUIREMENT_ENTRIES: usize = 32;
+/// Maximum recursion depth for the requirement-expression evaluator,
+/// bounding stack use on adversarial `And`/`Or`/`Not` nesting.
+const MAX_REQUIREMENT_DEPTH: u32 = 64;
+
+/// The purpose of one requirement within a requirements vector
+/// (cite: `requirement.h` `SecRequirementType`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequirementKind {
+    /// `kSecHostRequirementType = 1` — what hosts may run us.
+    Host,
+    /// `kSecGuestRequirementType = 2` — what guests we may run.
+    Guest,
+    /// `kSecDesignatedRequirementType = 3` — the designated
+    /// requirement, the predicate that identifies this code.
+    Designated,
+    /// `kSecLibraryRequirementType = 4` — what libraries we may link.
+    Library,
+    /// `kSecPluginRequirementType = 5` — what plug-ins we may load.
+    Plugin,
+    /// Any other / unrecognized requirement type code.
+    Other(u32),
+}
+
+impl RequirementKind {
+    /// Maps a raw `CS_BlobIndex.type` code to a [`RequirementKind`].
+    #[must_use]
+    pub fn from_raw(raw: u32) -> Self {
+        match raw {
+            1 => Self::Host,
+            2 => Self::Guest,
+            3 => Self::Designated,
+            4 => Self::Library,
+            5 => Self::Plugin,
+            other => Self::Other(other),
+        }
+    }
+
+    /// Human-readable label (e.g. `"designated"`).
+    #[must_use]
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Host => "host",
+            Self::Guest => "guest",
+            Self::Designated => "designated",
+            Self::Library => "library",
+            Self::Plugin => "plugin",
+            Self::Other(_) => "requirement",
+        }
+    }
+}
+
+/// One decoded requirement: its [`RequirementKind`] and the evaluated
+/// expression text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DecodedRequirement {
+    /// What this requirement governs (designated, host, library, …).
+    pub kind: RequirementKind,
+    /// The human-readable requirement expression, e.g.
+    /// `identifier "com.example" and anchor apple generic`.
+    pub text: String,
 }
 
 /// Embedded CMS signature wrapper (`CSMAGIC_BLOBWRAPPER =
@@ -1171,6 +1348,113 @@ fn der_locate_entries(payload: &[u8]) -> Option<&[u8]> {
     Some(inner)
 }
 
+/// Like [`der_collect_keys`] but decodes each entry's value as well,
+/// preserving on-disk order (no sort/dedup — order is meaningful for
+/// display).
+fn der_collect_pairs(payload: &[u8]) -> Vec<(String, DerEntitlementValue)> {
+    let mut out: Vec<(String, DerEntitlementValue)> = Vec::new();
+    let entries = der_locate_entries(payload).unwrap_or(payload);
+    let mut cursor = 0usize;
+    while cursor < entries.len() {
+        let Some(remaining) = entries.get(cursor..) else {
+            break;
+        };
+        let Some(hdr) = der_read_header(remaining) else {
+            break;
+        };
+        let Some(body_start) = cursor.checked_add(hdr.header_len) else {
+            break;
+        };
+        let Some(body_end) = body_start.checked_add(hdr.length) else {
+            break;
+        };
+        if body_end > entries.len() {
+            break;
+        }
+        if hdr.tag == 0x30
+            && let Some(seq_body) = entries.get(body_start..body_end)
+            && let Some(pair) = der_entry_pair(seq_body)
+        {
+            out.push(pair);
+        }
+        cursor = body_end;
+    }
+    out
+}
+
+/// Decodes one `SEQUENCE { UTF8String key, value }` entry.
+fn der_entry_pair(seq_body: &[u8]) -> Option<(String, DerEntitlementValue)> {
+    let khdr = der_read_header(seq_body)?;
+    if khdr.tag != 0x0c {
+        return None;
+    }
+    let kstart = khdr.header_len;
+    let kend = kstart.checked_add(khdr.length)?;
+    let kbytes = seq_body.get(kstart..kend)?;
+    let key = core::str::from_utf8(kbytes).ok()?.to_string();
+    let value = seq_body
+        .get(kend..)
+        .and_then(|rest| der_decode_value(rest, 0))
+        .unwrap_or(DerEntitlementValue::Other(0));
+    Some((key, value))
+}
+
+/// Decodes one DER value TLV starting at the front of `buf`.
+fn der_decode_value(buf: &[u8], depth: u32) -> Option<DerEntitlementValue> {
+    if depth > MAX_DER_VALUE_DEPTH {
+        return Some(DerEntitlementValue::Other(0));
+    }
+    let hdr = der_read_header(buf)?;
+    let start = hdr.header_len;
+    let end = start.checked_add(hdr.length)?;
+    let body = buf.get(start..end)?;
+    let value = match hdr.tag {
+        0x01 => DerEntitlementValue::Bool(body.first().copied().unwrap_or(0) != 0),
+        0x02 => DerEntitlementValue::Integer(der_decode_integer(body)),
+        0x0c => DerEntitlementValue::String(String::from_utf8_lossy(body).into_owned()),
+        0x30 | 0x31 | 0xa0 | 0xb0 => {
+            let mut items: Vec<DerEntitlementValue> = Vec::new();
+            let mut cursor = 0usize;
+            while cursor < body.len() && items.len() < MAX_DER_ARRAY_ITEMS {
+                let Some(rem) = body.get(cursor..) else {
+                    break;
+                };
+                let Some(h) = der_read_header(rem) else {
+                    break;
+                };
+                let Some(bs) = cursor.checked_add(h.header_len) else {
+                    break;
+                };
+                let Some(be) = bs.checked_add(h.length) else {
+                    break;
+                };
+                if be > body.len() {
+                    break;
+                }
+                if let Some(item) = body.get(cursor..be).and_then(|tlv| {
+                    der_decode_value(tlv, depth.checked_add(1).unwrap_or(MAX_DER_VALUE_DEPTH))
+                }) {
+                    items.push(item);
+                }
+                cursor = be;
+            }
+            DerEntitlementValue::Array(items)
+        }
+        other => DerEntitlementValue::Other(other),
+    };
+    Some(value)
+}
+
+/// Folds a big-endian DER `INTEGER` body into an `i64` (values wider
+/// than 8 bytes keep only the low 8).
+fn der_decode_integer(body: &[u8]) -> i64 {
+    let mut v: i64 = 0;
+    for b in body.iter().take(8) {
+        v = v.wrapping_shl(8) | i64::from(*b);
+    }
+    v
+}
+
 fn der_first_utf8_string(seq_body: &[u8]) -> Option<String> {
     let hdr = der_read_header(seq_body)?;
     if hdr.tag != 0x0c {
@@ -1229,6 +1513,267 @@ fn der_read_header(buf: &[u8]) -> Option<DerHeader> {
         length,
         header_len: 2usize.checked_add(n)?,
     })
+}
+
+// === Internal requirement-expression evaluator ===
+//
+// Ports the CSEL / CSCO opcode grammar (Apple `requirement.h`,
+// cross-checked against blacktop/go-macho `requirement.go`). Every
+// field is big-endian, like the rest of the code-signing payload.
+
+/// `exprForm` opcode values (Apple `requirement.h` `ExprOp`).
+mod req_op {
+    pub const FALSE: u32 = 0;
+    pub const TRUE: u32 = 1;
+    pub const IDENT: u32 = 2;
+    pub const APPLE_ANCHOR: u32 = 3;
+    pub const ANCHOR_HASH: u32 = 4;
+    pub const INFO_KEY_VALUE: u32 = 5;
+    pub const AND: u32 = 6;
+    pub const OR: u32 = 7;
+    pub const CD_HASH: u32 = 8;
+    pub const NOT: u32 = 9;
+    pub const INFO_KEY_FIELD: u32 = 10;
+    pub const CERT_FIELD: u32 = 11;
+    pub const TRUSTED_CERT: u32 = 12;
+    pub const TRUSTED_CERTS: u32 = 13;
+    pub const CERT_GENERIC: u32 = 14;
+    pub const APPLE_GENERIC_ANCHOR: u32 = 15;
+    pub const ENTITLEMENT_FIELD: u32 = 16;
+    pub const CERT_POLICY: u32 = 17;
+    pub const NAMED_ANCHOR: u32 = 18;
+    pub const NAMED_CODE: u32 = 19;
+}
+
+/// High-byte flag bits on an opcode (`opFlagMask` / `opGeneric*`).
+const REQ_OP_FLAG_MASK: u32 = 0xFF00_0000;
+const REQ_OP_GENERIC_FALSE: u32 = 0x8000_0000;
+const REQ_OP_GENERIC_SKIP: u32 = 0x4000_0000;
+
+/// Match-suffix opcodes for field comparisons (`MatchOperation`).
+mod match_op {
+    pub const EXISTS: u32 = 0;
+    pub const EQUAL: u32 = 1;
+    pub const CONTAINS: u32 = 2;
+    pub const BEGINS_WITH: u32 = 3;
+    pub const ENDS_WITH: u32 = 4;
+    pub const LESS_THAN: u32 = 5;
+    pub const GREATER_THAN: u32 = 6;
+    pub const LESS_EQUAL: u32 = 7;
+    pub const GREATER_EQUAL: u32 = 8;
+}
+
+/// Syntax-nesting levels controlling expression parenthesization.
+const SL_PRIMARY: u32 = 0;
+const SL_AND: u32 = 1;
+const SL_OR: u32 = 2;
+const SL_TOP: u32 = 3;
+
+/// Forward big-endian byte cursor over requirement-expression bytes.
+struct ReqCursor<'a> {
+    buf: &'a [u8],
+    pos: usize,
+}
+
+impl<'a> ReqCursor<'a> {
+    fn new(buf: &'a [u8]) -> Self {
+        Self { buf, pos: 0 }
+    }
+
+    /// Reads a big-endian `u32` and advances the cursor.
+    fn u32(&mut self) -> Option<u32> {
+        let v = read_u32_be_at(self.buf, self.pos)?;
+        self.pos = self.pos.checked_add(4)?;
+        Some(v)
+    }
+
+    /// Reads a length-prefixed, 4-byte-aligned data field, returning
+    /// its `length` significant bytes (the alignment padding is
+    /// consumed but not returned).
+    fn data(&mut self) -> Option<&'a [u8]> {
+        let len = self.u32()? as usize;
+        let end = self.pos.checked_add(len)?;
+        let slice = self.buf.get(self.pos..end)?;
+        let aligned = len.checked_add(3)? & !3usize;
+        self.pos = self.pos.checked_add(aligned)?;
+        Some(slice)
+    }
+}
+
+/// Locates and evaluates the requirement blob at `off` within the
+/// requirements vector, returning its expression text.
+fn decode_requirement_blob(vector: &[u8], off: usize) -> Option<String> {
+    // Nested blob: [magic(0xfade0c00)][length][kind][expr…].
+    let magic = read_u32_be_at(vector, off)?;
+    if magic != CSMAGIC_REQUIREMENT {
+        return None;
+    }
+    let length = read_u32_be_at(vector, off.checked_add(4)?)? as usize;
+    let blob_end = off.checked_add(length)?;
+    // `kind` (exprForm == 1) occupies +8; the expression starts at +12.
+    let expr_start = off.checked_add(12)?;
+    let expr = vector.get(expr_start..blob_end)?;
+    let mut cursor = ReqCursor::new(expr);
+    eval_expression(&mut cursor, SL_TOP, 0)
+}
+
+/// Evaluates one requirement-expression node into text.
+fn eval_expression(cursor: &mut ReqCursor<'_>, syntax_level: u32, depth: u32) -> Option<String> {
+    if depth > MAX_REQUIREMENT_DEPTH {
+        return Some("/* … */".to_string());
+    }
+    let next = depth.checked_add(1)?;
+    let op = cursor.u32()?;
+    match op {
+        req_op::FALSE => Some("never".to_string()),
+        req_op::TRUE => Some("always".to_string()),
+        req_op::IDENT => Some(format!("identifier \"{}\"", utf8_lossy(cursor.data()?))),
+        req_op::APPLE_ANCHOR => Some("anchor apple".to_string()),
+        req_op::APPLE_GENERIC_ANCHOR => Some("anchor apple generic".to_string()),
+        req_op::ANCHOR_HASH => {
+            let slot = get_cert_slot(cursor)?;
+            let data = cursor.data()?;
+            Some(format!("certificate {slot} = H\"{}\"", hex_encode(data)))
+        }
+        req_op::INFO_KEY_VALUE => {
+            let key = utf8_lossy(cursor.data()?);
+            let value = utf8_lossy(cursor.data()?);
+            Some(format!("info[{key}] = \"{value}\""))
+        }
+        req_op::AND => {
+            let paren = syntax_level < SL_AND;
+            let left = eval_expression(cursor, SL_AND, next)?;
+            let right = eval_expression(cursor, SL_AND, next)?;
+            Some(wrap(paren, format!("{left} and {right}")))
+        }
+        req_op::OR => {
+            let paren = syntax_level < SL_OR;
+            let left = eval_expression(cursor, SL_OR, next)?;
+            let right = eval_expression(cursor, SL_OR, next)?;
+            Some(wrap(paren, format!("{left} or {right}")))
+        }
+        req_op::NOT => Some(format!("! {}", eval_expression(cursor, SL_PRIMARY, next)?)),
+        req_op::CD_HASH => Some(format!("cdhash H\"{}\"", hex_encode(cursor.data()?))),
+        req_op::INFO_KEY_FIELD => {
+            let key = utf8_lossy(cursor.data()?);
+            let m = get_match(cursor)?;
+            Some(format!("info[{key}]{m}"))
+        }
+        req_op::ENTITLEMENT_FIELD => {
+            let key = utf8_lossy(cursor.data()?);
+            let m = get_match(cursor)?;
+            Some(format!("entitlement[{key}]{m}"))
+        }
+        req_op::CERT_FIELD => {
+            let slot = get_cert_slot(cursor)?;
+            let field = utf8_lossy(cursor.data()?);
+            let m = get_match(cursor)?;
+            Some(format!("certificate {slot}[{field}]{m}"))
+        }
+        req_op::CERT_GENERIC => {
+            let slot = get_cert_slot(cursor)?;
+            let oid = decode_oid(cursor.data()?);
+            let m = get_match(cursor)?;
+            Some(format!("certificate {slot}[field.{oid}]{m}"))
+        }
+        req_op::CERT_POLICY => {
+            let slot = get_cert_slot(cursor)?;
+            let oid = decode_oid(cursor.data()?);
+            let m = get_match(cursor)?;
+            Some(format!("certificate {slot}[policy.{oid}]{m}"))
+        }
+        req_op::TRUSTED_CERT => Some(format!("certificate {} trusted", get_cert_slot(cursor)?)),
+        req_op::TRUSTED_CERTS => Some("anchor trusted".to_string()),
+        req_op::NAMED_ANCHOR => Some(format!("anchor apple {}", utf8_lossy(cursor.data()?))),
+        req_op::NAMED_CODE => Some(format!("({})", utf8_lossy(cursor.data()?))),
+        other => {
+            if other & REQ_OP_GENERIC_FALSE != 0 {
+                Some(format!("false /* opcode {} */", other & !REQ_OP_FLAG_MASK))
+            } else if other & REQ_OP_GENERIC_SKIP != 0 {
+                Some(format!("/* opcode {} */", other & !REQ_OP_FLAG_MASK))
+            } else {
+                Some(format!("/* unknown opcode {other} */"))
+            }
+        }
+    }
+}
+
+/// Reads a match-suffix operator and operand into text.
+fn get_match(cursor: &mut ReqCursor<'_>) -> Option<String> {
+    let op = cursor.u32()?;
+    let text = match op {
+        match_op::EXISTS => " /* exists */".to_string(),
+        match_op::EQUAL => format!(" = \"{}\"", utf8_lossy(cursor.data()?)),
+        match_op::CONTAINS => format!(" ~ \"{}\"", utf8_lossy(cursor.data()?)),
+        match_op::BEGINS_WITH => format!(" = \"{}*\"", utf8_lossy(cursor.data()?)),
+        match_op::ENDS_WITH => format!(" = \"*{}\"", utf8_lossy(cursor.data()?)),
+        match_op::LESS_THAN => format!(" < \"{}\"", utf8_lossy(cursor.data()?)),
+        match_op::GREATER_THAN => format!(" > \"{}\"", utf8_lossy(cursor.data()?)),
+        match_op::LESS_EQUAL => format!(" <= \"{}\"", utf8_lossy(cursor.data()?)),
+        match_op::GREATER_EQUAL => format!(" >= \"{}\"", utf8_lossy(cursor.data()?)),
+        _ => " /* match? */".to_string(),
+    };
+    Some(text)
+}
+
+/// Reads a certificate-slot index into text (`leaf` / `root` / N).
+fn get_cert_slot(cursor: &mut ReqCursor<'_>) -> Option<String> {
+    let slot = cursor.u32()? as i32;
+    Some(match slot {
+        0 => "leaf".to_string(),
+        -1 => "root".to_string(),
+        n => n.to_string(),
+    })
+}
+
+/// Decodes a DER-style OID body (base-128 varints) into dotted form.
+fn decode_oid(data: &[u8]) -> String {
+    let mut pos = 0usize;
+    let Some(first) = oid_component(data, &mut pos) else {
+        return String::new();
+    };
+    let q1 = core::cmp::min(first.checked_div(40).unwrap_or(0), 2);
+    let second = first.saturating_sub(q1.saturating_mul(40));
+    let mut out = format!("{q1}.{second}");
+    while let Some(v) = oid_component(data, &mut pos) {
+        out.push('.');
+        out.push_str(&v.to_string());
+    }
+    out
+}
+
+/// Reads one base-128 OID component starting at `*pos`, advancing it.
+fn oid_component(data: &[u8], pos: &mut usize) -> Option<u32> {
+    let mut result: u32 = 0;
+    loop {
+        let b = *data.get(*pos)?;
+        *pos = pos.checked_add(1)?;
+        result = result.wrapping_mul(128).wrapping_add((b & 0x7f) as u32);
+        if b & 0x80 == 0 {
+            break;
+        }
+    }
+    Some(result)
+}
+
+/// Wraps `s` in parentheses when `paren` is set.
+fn wrap(paren: bool, s: String) -> String {
+    if paren { format!("({s})") } else { s }
+}
+
+/// Lossy UTF-8 rendering of a byte slice for display.
+fn utf8_lossy(data: &[u8]) -> String {
+    String::from_utf8_lossy(data).into_owned()
+}
+
+/// Lowercase hex encoding of a byte slice.
+fn hex_encode(data: &[u8]) -> String {
+    use core::fmt::Write as _;
+    let mut out = String::with_capacity(data.len().saturating_mul(2));
+    for b in data {
+        let _ = write!(out, "{b:02x}");
+    }
+    out
 }
 
 /// Iterator over [`BlobIndex`] entries in a SuperBlob.
@@ -1339,5 +1884,45 @@ mod tests {
         assert_eq!(blobs[0].slot, Slot::Requirements);
         assert_eq!(blobs[0].raw_slot, 2);
         assert_eq!(blobs[0].offset, 20);
+    }
+
+    #[test]
+    fn requirements_decode_designated_expression() {
+        // A designated requirement: identifier "a" and anchor apple generic.
+        let mut v: Vec<u8> = Vec::new();
+        v.extend(CSMAGIC_REQUIREMENTS.to_be_bytes()); // magic
+        v.extend(52u32.to_be_bytes()); // total length
+        v.extend(1u32.to_be_bytes()); // count
+        v.extend(3u32.to_be_bytes()); // type = designated
+        v.extend(20u32.to_be_bytes()); // offset of the requirement blob
+        // requirement blob at offset 20:
+        v.extend(CSMAGIC_REQUIREMENT.to_be_bytes()); // magic
+        v.extend(32u32.to_be_bytes()); // blob length
+        v.extend(1u32.to_be_bytes()); // kind = exprForm
+        // expression: And( Ident("a"), AppleGenericAnchor )
+        v.extend(6u32.to_be_bytes()); // opAnd
+        v.extend(2u32.to_be_bytes()); // opIdent
+        v.extend(1u32.to_be_bytes()); // data length = 1
+        v.extend([0x61, 0x00, 0x00, 0x00]); // "a" + 4-byte alignment pad
+        v.extend(15u32.to_be_bytes()); // opAppleGenericAnchor
+        assert_eq!(v.len(), 52);
+
+        let reqs = Requirements::parse(&v).expect("parse requirements");
+        let decoded = reqs.decoded();
+        assert_eq!(decoded.len(), 1);
+        assert_eq!(decoded[0].kind, RequirementKind::Designated);
+        assert_eq!(decoded[0].text, "identifier \"a\" and anchor apple generic");
+    }
+
+    #[test]
+    fn der_entitlement_pairs_decode_key_and_value() {
+        // A single SEQUENCE { UTF8String "k", BOOLEAN true }.
+        let payload: [u8; 8] = [0x30, 0x06, 0x0c, 0x01, 0x6b, 0x01, 0x01, 0xff];
+        let pairs = der_collect_pairs(&payload);
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].0, "k");
+        assert_eq!(pairs[0].1, DerEntitlementValue::Bool(true));
+        assert_eq!(pairs[0].1.kind_label(), "bool");
+        assert_eq!(pairs[0].1.display(), "true");
     }
 }
