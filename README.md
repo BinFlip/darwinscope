@@ -48,4 +48,5 @@ roadmap.
 
 ## License
 
-Apache-2.0 — see [`LICENSE`](./LICENSE).
+Copyright 2026 ATRAPS LLC. Licensed under the Apache License,
+Version 2.0 — see [`LICENSE`](./LICENSE) and [`NOTICE`](./NOTICE).
