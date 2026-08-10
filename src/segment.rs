@@ -443,19 +443,22 @@ bitflags! {
     }
 }
 
-/// Shannon entropy in bits. Pulled out of the [`Section`] impl so we
-/// can constrain the `clippy::indexing_slicing` /
-/// `arithmetic_side_effects` allowances to the smallest possible
-/// surface — the index `b as usize` is a `u8` cast and provably
-/// `< 256`, but the lint can't see that.
-#[allow(clippy::indexing_slicing, clippy::arithmetic_side_effects)]
+/// Shannon entropy in bits.
+///
+/// Pulled out of the [`Section`] impl to keep the histogram loop small.
+/// The byte histogram is indexed through `get_mut` and accumulated with
+/// `saturating_add`, so no lint allowance is needed: the index is a `u8`
+/// cast that cannot leave the 256-entry array, and the counter cannot
+/// wrap even for a pathologically large body.
 fn shannon_entropy(body: &[u8]) -> f64 {
     if body.is_empty() {
         return 0.0;
     }
     let mut counts = [0u64; 256];
     for &b in body {
-        counts[b as usize] += 1;
+        if let Some(slot) = counts.get_mut(b as usize) {
+            *slot = slot.saturating_add(1);
+        }
     }
     let len = body.len() as f64;
     let mut entropy = 0.0f64;
