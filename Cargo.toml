@@ -1,16 +1,31 @@
 [package]
 name = "darwinscope"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
-authors = ["Johann Kempter <admin@binflip.rs>"]
 rust-version = "1.88"
 description = "Parse and inspect Mach-O binaries — including the Apple Objective-C and Swift runtime metadata they embed"
 license = "Apache-2.0"
-repository = "https://github.com/BinFlip/darwinscope"
+repository = "https://github.com/ATRAPSLLC/darwinscope"
 readme = "README.md"
 keywords = ["mach-o", "objective-c", "swift", "parser", "reverse-engineering"]
 categories = ["parser-implementations"]
 exclude = ["tests/samples/", "reference/", "research/"]
+
+# darwinscope is used in malware-analysis pipelines where every input
+# byte is adversarial. These lints prevent the parser from panicking on
+# malformed input. The `cfg_attr(test, allow(...))` escape hatch in
+# `src/lib.rs` lets tests still use `unwrap`/`expect`/`panic` for terseness.
+# This crate also denies `unsafe_code`.
+[lints.rust]
+missing_docs = "deny"
+unsafe_code = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+arithmetic_side_effects = "deny"
+indexing_slicing = "deny"
 
 [features]
 default = []
@@ -19,8 +34,8 @@ default = []
 tracing = ["dep:tracing"]
 
 [dependencies]
-goblin = "0.10.5"
-bitflags = "2.11.1"
+goblin = "0.10.7"
+bitflags = "2.13.0"
 plist = "1.9.0"
 blake3 = "1.8.5"
 sha2 = "0.11.0"
